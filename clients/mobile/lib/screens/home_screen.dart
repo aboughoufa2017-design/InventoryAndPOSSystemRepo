@@ -7,6 +7,7 @@ import 'inventory_ops_screen.dart';
 import 'login_screen.dart';
 import 'pos_checkout_screen.dart';
 import 'products_screen.dart';
+import 'register_product_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -94,6 +95,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               child: const Text('Products / barcode'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RegisterProductScreen(),
+                  ),
+                );
+              },
+              child: const Text('Register product (scan)'),
             ),
             const SizedBox(height: 12),
             OutlinedButton(

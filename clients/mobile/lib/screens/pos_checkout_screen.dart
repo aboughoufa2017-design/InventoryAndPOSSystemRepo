@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../db/app_database.dart';
 import '../sync/outbox.dart';
+import '../widgets/barcode_scanner_sheet.dart';
 
 /// Offline POS cart: commits sale + outbox atomically via Outbox enqueue after local note.
 class PosCheckoutScreen extends StatefulWidget {
@@ -27,6 +28,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     _barcodeCtrl.dispose();
     _warehouseCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await scanBarcode(context);
+    if (!mounted || code == null || code.isEmpty) return;
+    _barcodeCtrl.text = code;
+    await _addByBarcode();
   }
 
   Future<void> _addByBarcode() async {
@@ -118,11 +126,25 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             controller: _warehouseCtrl,
             decoration: const InputDecoration(labelText: 'Warehouse / branch id'),
           ),
-          TextField(
-            controller: _barcodeCtrl,
-            decoration: const InputDecoration(labelText: 'Barcode / SKU'),
-            onSubmitted: (_) => _addByBarcode(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _barcodeCtrl,
+                  decoration: const InputDecoration(labelText: 'Barcode / SKU'),
+                  onSubmitted: (_) => _addByBarcode(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Scan barcode',
+                onPressed: _scanBarcode,
+                icon: const Icon(Icons.qr_code_scanner),
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
           FilledButton(onPressed: _addByBarcode, child: const Text('Add to cart')),
           const SizedBox(height: 12),
           ..._lines.map(
