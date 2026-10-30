@@ -3,7 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'auth/auth_repository.dart';
+import 'auth/session_controller.dart';
 import 'catalog/catalog_api.dart';
+import 'connectivity/connectivity_controller.dart';
 import 'db/app_database.dart';
 import 'l10n/locale_controller.dart';
 import 'scan_go/self_checkout_api.dart';
@@ -12,6 +14,7 @@ import 'screens/scan_go_welcome_screen.dart';
 import 'sync/outbox.dart';
 import 'sync/sync_client.dart';
 import 'theme/modern_tech_theme.dart';
+import 'widgets/offline_banner.dart';
 
 /// API origin, e.g. `https://api.example.com` (no trailing slash).
 /// Override locally: `--dart-define=API_BASE_URL=http://10.0.2.2:5011`
@@ -37,7 +40,12 @@ Future<void> main() async {
   final locale = LocaleController();
   await locale.load();
 
-  final loggedIn = await auth.isLoggedIn;
+  final connectivity = ConnectivityController();
+  await connectivity.start();
+
+  final session = SessionController(auth);
+  await auth.ensureSession(isOnline: connectivity.isOnline);
+  await session.hydrate();
 
   runApp(
     MultiProvider(
@@ -49,20 +57,21 @@ Future<void> main() async {
         Provider<SelfCheckoutApi>.value(value: selfCheckout),
         Provider<CatalogApi>.value(value: catalog),
         ChangeNotifierProvider<LocaleController>.value(value: locale),
+        ChangeNotifierProvider<ConnectivityController>.value(value: connectivity),
+        ChangeNotifierProvider<SessionController>.value(value: session),
       ],
-      child: WarehouseApp(loggedIn: loggedIn),
+      child: const WarehouseApp(),
     ),
   );
 }
 
 class WarehouseApp extends StatelessWidget {
-  const WarehouseApp({super.key, required this.loggedIn});
-
-  final bool loggedIn;
+  const WarehouseApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final localeCtrl = context.watch<LocaleController>();
+    final session = context.watch<SessionController>();
     return MaterialApp(
       title: localeCtrl.s.brand,
       debugShowCheckedModeBanner: false,
@@ -75,12 +84,14 @@ class WarehouseApp extends StatelessWidget {
       ],
       theme: buildModernTechTheme(),
       builder: (context, child) {
-        return Directionality(
-          textDirection: localeCtrl.textDirection,
-          child: child ?? const SizedBox.shrink(),
+        return OfflineBackOnlineListener(
+          child: Directionality(
+            textDirection: localeCtrl.textDirection,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
-      home: loggedIn ? const HomeScreen() : const ScanGoWelcomeScreen(),
+      home: session.isAuthenticated ? const HomeScreen() : const ScanGoWelcomeScreen(),
     );
   }
 }

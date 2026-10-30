@@ -56,6 +56,16 @@ class AppStrings {
   String get syncNow => _ar ? 'مزامنة الآن' : 'Sync now';
   String get syncOffline =>
       _ar ? 'غير متصل — تم تخطي المزامنة' : 'Offline — sync skipped';
+  String get offlineBanner => _ar
+      ? 'غير متصل — العمل المحلي متاح'
+      : 'You’re offline — local work still available';
+  String get backOnline => _ar ? 'عدت للاتصال' : 'You’re back online';
+  String get syncDisabledOffline =>
+      _ar ? 'المزامنة تحتاج اتصالاً' : 'Sync requires a connection';
+  String pendingOutbox(int count) => _ar
+      ? 'عمليات معلّقة في الطابور: $count'
+      : 'Pending offline ops: $count';
+  String get signedInAs => _ar ? 'مسجّل كـ' : 'Signed in as';
   String get syncNeedRelogin => _ar
       ? 'المزامنة تحتاج جهاز مسجّل. سجّل الخروج ثم الدخول مرة أخرى.'
       : 'Sync needs a registered device. Sign out and sign in again.';

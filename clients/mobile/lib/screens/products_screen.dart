@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../catalog/catalog_api.dart';
 import '../db/app_database.dart';
 import '../l10n/locale_controller.dart';
+import '../widgets/offline_banner.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -221,7 +222,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           (p.barcode?.toLowerCase().contains(q) ?? false);
     }).toList();
 
-    return Scaffold(
+    return OfflineAwareScaffold(
       appBar: AppBar(
         title: Text(s.products),
         actions: [

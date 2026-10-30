@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 
 import '../auth/auth_repository.dart';
+import '../auth/session_controller.dart';
 import '../l10n/locale_controller.dart';
 import 'home_screen.dart';
 
@@ -20,6 +21,25 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _prefill());
+  }
+
+  Future<void> _prefill() async {
+    final auth = context.read<AuthRepository>();
+    final tenant = await auth.rememberedTenantCode;
+    final email = await auth.rememberedEmail;
+    if (!mounted) return;
+    if (tenant != null && tenant.isNotEmpty) {
+      _tenantCodeController.text = tenant;
+    }
+    if (email != null && email.isNotEmpty) {
+      _emailController.text = email;
+    }
+  }
+
+  @override
   void dispose() {
     _tenantCodeController.dispose();
     _emailController.dispose();
@@ -33,11 +53,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await context.read<AuthRepository>().login(
+      final auth = context.read<AuthRepository>();
+      final session = context.read<SessionController>();
+      await auth.login(
             tenantCode: _tenantCodeController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
+      await session.markLoggedIn();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const HomeScreen()),

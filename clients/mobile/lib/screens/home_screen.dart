@@ -1,10 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../auth/auth_repository.dart';
+import '../auth/session_controller.dart';
+import '../connectivity/connectivity_controller.dart';
 import '../l10n/locale_controller.dart';
+import '../sync/outbox.dart';
 import '../sync/sync_client.dart';
 import '../theme/modern_tech_theme.dart';
+import '../widgets/offline_banner.dart';
 import 'inventory_ops_screen.dart';
 import 'pos_checkout_screen.dart';
 import 'products_screen.dart';
@@ -22,9 +25,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? _status;
   bool _syncing = false;
+  int _pendingOps = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPending());
+  }
+
+  Future<void> _loadPending() async {
+    final pending = await context.read<Outbox>().pending();
+    if (mounted) setState(() => _pendingOps = pending.length);
+  }
 
   Future<void> _sync() async {
     final s = context.read<LocaleController>().s;
+    final online = context.read<ConnectivityController>().isOnline;
+    if (!online) {
+      setState(() => _status = s.syncDisabledOffline);
+      return;
+    }
     setState(() {
       _syncing = true;
       _status = null;
@@ -36,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? s.syncOffline
             : s.syncResult(result.pushed, result.pulled);
       });
+      await _loadPending();
     } catch (e) {
       final text = e.toString();
       setState(() {
@@ -47,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _logout() async {
-    await context.read<AuthRepository>().logout();
+    await context.read<SessionController>().markLoggedOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const ScanGoWelcomeScreen()),
@@ -56,14 +77,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _open(Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen)).then((_) {
+      if (mounted) _loadPending();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleController>();
+    final connectivity = context.watch<ConnectivityController>();
+    final session = context.watch<SessionController>();
     final s = locale.s;
-    return Scaffold(
+    final online = connectivity.isOnline;
+
+    return OfflineAwareScaffold(
       appBar: AppBar(
         title: Text(s.staffHome),
         actions: [
@@ -81,21 +108,41 @@ class _HomeScreenState extends State<HomeScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (session.email != null || session.displayName != null) ...[
+            Text(
+              '${s.signedInAs} ${session.displayName ?? session.email}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: ModernTechColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             s.staffHomeHint,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted),
           ),
+          if (_pendingOps > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.pending_actions, size: 18, color: ModernTechColors.royalBlue),
+                const SizedBox(width: 8),
+                Expanded(child: Text(s.pendingOutbox(_pendingOps))),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: _syncing ? null : _sync,
+            onPressed: (_syncing || !online) ? null : _sync,
             icon: _syncing
                 ? const SizedBox(
                     height: 18,
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Icon(Icons.sync),
-            label: Text(s.syncNow),
+                : Icon(online ? Icons.sync : Icons.cloud_off),
+            label: Text(online ? s.syncNow : s.syncDisabledOffline),
           ),
           if (_status != null) ...[
             const SizedBox(height: 12),

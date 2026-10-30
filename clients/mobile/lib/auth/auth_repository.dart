@@ -26,13 +26,27 @@ class AuthRepository {
   static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
   static const _deviceKey = 'device_key';
+  static const _tenantKey = 'remember_tenant';
+  static const _emailKey = 'remember_email';
+  static const _displayNameKey = 'remember_display_name';
 
   Uri _uri(String path) => Uri.parse('$apiBaseUrl$path');
 
-  Future<bool> get isLoggedIn async =>
-      (await _storage.read(key: _accessKey))?.isNotEmpty == true;
+  /// True if a refresh or access token is stored (survives cold start).
+  Future<bool> get isLoggedIn async {
+    final access = await _storage.read(key: _accessKey);
+    if (access != null && access.isNotEmpty) return true;
+    final refresh = await _storage.read(key: _refreshKey);
+    return refresh != null && refresh.isNotEmpty;
+  }
 
   Future<String?> get accessToken => _storage.read(key: _accessKey);
+
+  Future<String?> get rememberedTenantCode => _storage.read(key: _tenantKey);
+
+  Future<String?> get rememberedEmail => _storage.read(key: _emailKey);
+
+  Future<String?> get rememberedDisplayName => _storage.read(key: _displayNameKey);
 
   /// Stable per-install device key used for login + JWT `device_id` claim.
   Future<String> getOrCreateDeviceKey() async {
@@ -54,6 +68,38 @@ class AuthRepository {
       // Ignore platform probe failures.
     }
     return 'Warehouse Mobile';
+  }
+
+  /// Cold-start session restore: refresh when online; keep tokens when offline.
+  Future<bool> ensureSession({required bool isOnline}) async {
+    final access = await _storage.read(key: _accessKey);
+    final refresh = await _storage.read(key: _refreshKey);
+    final hasAccess = access != null && access.isNotEmpty;
+    final hasRefresh = refresh != null && refresh.isNotEmpty;
+    if (!hasAccess && !hasRefresh) {
+      return false;
+    }
+
+    if (!isOnline) {
+      // Offline staff shell: allow local cache / outbox with stored session.
+      return true;
+    }
+
+    if (hasRefresh) {
+      try {
+        await this.refresh();
+        return true;
+      } catch (_) {
+        if (hasAccess) {
+          // Keep access token; may still be valid.
+          return true;
+        }
+        await logout();
+        return false;
+      }
+    }
+
+    return hasAccess;
   }
 
   Future<void> login({
@@ -81,6 +127,11 @@ class AuthRepository {
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     await _persistTokens(data);
+    await _persistProfile(
+      tenantCode: tenantCode.trim(),
+      email: email.trim(),
+      displayName: (data['displayName'] ?? data['DisplayName'])?.toString(),
+    );
   }
 
   Future<void> refresh() async {
@@ -100,12 +151,33 @@ class AuthRepository {
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     await _persistTokens(data);
+    final display = (data['displayName'] ?? data['DisplayName'])?.toString();
+    final email = (data['email'] ?? data['Email'])?.toString();
+    if (display != null && display.isNotEmpty) {
+      await _storage.write(key: _displayNameKey, value: display);
+    }
+    if (email != null && email.isNotEmpty) {
+      await _storage.write(key: _emailKey, value: email);
+    }
   }
 
   Future<void> logout() async {
     await _storage.delete(key: _accessKey);
     await _storage.delete(key: _refreshKey);
-    // Keep device_key so the same device re-registers on next login.
+    await _storage.delete(key: _displayNameKey);
+    // Keep device_key + remembered tenant/email for next login prefill.
+  }
+
+  Future<void> _persistProfile({
+    required String tenantCode,
+    required String email,
+    String? displayName,
+  }) async {
+    await _storage.write(key: _tenantKey, value: tenantCode);
+    await _storage.write(key: _emailKey, value: email);
+    if (displayName != null && displayName.isNotEmpty) {
+      await _storage.write(key: _displayNameKey, value: displayName);
+    }
   }
 
   Future<void> _persistTokens(Map<String, dynamic> data) async {

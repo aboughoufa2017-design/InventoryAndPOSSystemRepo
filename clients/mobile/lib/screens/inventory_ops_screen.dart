@@ -9,6 +9,7 @@ import '../db/app_database.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/locale_controller.dart';
 import '../sync/outbox.dart';
+import '../widgets/offline_banner.dart';
 
 /// Queue offline inventory mutations; server remains authority on push.
 class InventoryOpsScreen extends StatefulWidget {
@@ -160,7 +161,7 @@ class _InventoryOpsScreenState extends State<InventoryOpsScreen> {
       // keep selection even if filtered out of dropdown items — use full list for value
     }
 
-    return Scaffold(
+    return OfflineAwareScaffold(
       appBar: AppBar(title: Text(s.inventoryTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

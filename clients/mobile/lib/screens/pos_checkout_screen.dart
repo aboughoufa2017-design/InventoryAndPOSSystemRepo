@@ -10,6 +10,7 @@ import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../sync/outbox.dart';
 import '../widgets/barcode_scanner_sheet.dart';
+import '../widgets/offline_banner.dart';
 
 /// Staff POS: offline cart, Scan & Go order-QR import, optional random audit, then pay.
 class PosCheckoutScreen extends StatefulWidget {
@@ -261,7 +262,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   Widget build(BuildContext context) {
     final s = context.watch<LocaleController>().s;
     final total = _lines.fold<double>(0, (sum, l) => sum + l.quantity * l.unitPrice);
-    return Scaffold(
+    return OfflineAwareScaffold(
       appBar: AppBar(title: Text(s.posCheckout)),
       body: ListView(
         padding: const EdgeInsets.all(16),
