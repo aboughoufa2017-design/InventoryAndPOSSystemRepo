@@ -64,18 +64,60 @@ public static class StartupDatabaseRestore
             }
         }
 
+        // psql/pg_restore need libpq format (URI or lowercase host=), not Npgsql's Host=.
+        var libpqConnectionString = ToLibpqConnectionString(connectionString);
+
         logger.LogInformation("Restoring database from {DumpPath}…", dumpPath);
         if (dumpPath.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
         {
-            RunPsqlFile(connectionString, dumpPath, logger);
+            RunPsqlFile(libpqConnectionString, dumpPath, logger);
         }
         else
         {
-            RunPgRestore(connectionString, dumpPath, logger);
+            RunPgRestore(libpqConnectionString, dumpPath, logger);
         }
 
         logger.LogInformation("Database restore from {DumpPath} completed.", dumpPath);
         return true;
+    }
+
+    /// <summary>
+    /// Builds a <c>postgresql://</c> URI for psql/pg_restore from an Npgsql keyword string or URI.
+    /// </summary>
+    internal static string ToLibpqConnectionString(string npgsqlOrUri)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(npgsqlOrUri);
+
+        if (npgsqlOrUri.Contains("://", StringComparison.Ordinal))
+        {
+            var normalized = PostgresConnectionString.Normalize(npgsqlOrUri);
+            return ToLibpqConnectionString(normalized);
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder(npgsqlOrUri);
+        var user = Uri.EscapeDataString(builder.Username ?? "");
+        var password = Uri.EscapeDataString(builder.Password ?? "");
+        var host = builder.Host ?? "localhost";
+        var port = builder.Port > 0 ? builder.Port : 5432;
+        var database = Uri.EscapeDataString(builder.Database ?? "postgres");
+
+        var uri = $"postgresql://{user}:{password}@{host}:{port}/{database}";
+        var sslmode = builder.SslMode switch
+        {
+            SslMode.Disable => null,
+            SslMode.Allow => "allow",
+            SslMode.Prefer => null, // libpq default
+            SslMode.Require => "require",
+            SslMode.VerifyCA => "verify-ca",
+            SslMode.VerifyFull => "verify-full",
+            _ => null,
+        };
+        if (sslmode is not null)
+        {
+            uri += "?sslmode=" + sslmode;
+        }
+
+        return uri;
     }
 
     private static string? ResolveDumpPath(IConfiguration configuration)
