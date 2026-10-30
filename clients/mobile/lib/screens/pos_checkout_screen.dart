@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../catalog/catalog_api.dart';
 import '../db/app_database.dart';
-import '../l10n/app_strings.dart';
+import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../sync/outbox.dart';
 import '../widgets/barcode_scanner_sheet.dart';
@@ -21,19 +22,38 @@ class PosCheckoutScreen extends StatefulWidget {
 class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   final _uuid = const Uuid();
   final _barcodeCtrl = TextEditingController();
-  final _warehouseCtrl = TextEditingController();
   final _orderCodeCtrl = TextEditingController();
   final _lines = <_CartLine>[];
+  String? _warehouseId;
+  List<WarehouseItem> _warehouses = const [];
   String? _message;
   SelfCheckoutSession? _imported;
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadWarehouses());
+  }
+
+  @override
   void dispose() {
     _barcodeCtrl.dispose();
-    _warehouseCtrl.dispose();
     _orderCodeCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadWarehouses() async {
+    try {
+      final list = await context.read<CatalogApi>().listWarehouses();
+      if (!mounted) return;
+      setState(() {
+        _warehouses = list;
+        _warehouseId ??= list.isNotEmpty ? list.first.id : null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _message = e.toString());
+    }
   }
 
   Future<void> _scanBarcode() async {
@@ -60,7 +80,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       return barcode == q || p.sku.toLowerCase() == q || p.name.toLowerCase().contains(q);
     }).toList();
     if (match.isEmpty) {
-      setState(() => _message = 'Product not in cache — sync first');
+      setState(() => _message = context.read<LocaleController>().s.noProducts);
       return;
     }
     final p = match.first;
@@ -86,9 +106,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   }
 
   Future<void> _importOrder() async {
+    final s = context.read<LocaleController>().s;
     final raw = _orderCodeCtrl.text.trim();
     if (raw.isEmpty) {
-      setState(() => _message = S.orderQrHint);
+      setState(() => _message = s.orderQrHint);
       return;
     }
     setState(() {
@@ -101,14 +122,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (session.auditRequired && !session.auditCompleted) {
         final audited = await _runAuditFlow(session);
         if (audited == null) {
-          setState(() => _message = S.auditCancelled);
+          setState(() => _message = s.auditCancelled);
           return;
         }
         session = audited;
       }
       setState(() {
         _imported = session;
-        _warehouseCtrl.text = session.warehouseId;
+        if (_warehouses.any((w) => w.id == session.warehouseId)) {
+          _warehouseId = session.warehouseId;
+        }
         _lines
           ..clear()
           ..addAll(
@@ -124,8 +147,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             ),
           );
         _message =
-            'Imported ${session.code} · ${session.grandTotal.toStringAsFixed(2)} ${session.currencyCode}'
-            '${session.auditRequired ? (session.auditCompleted ? ' · audit OK' : '') : ' · no audit'}';
+            '${session.code} · ${session.grandTotal.toStringAsFixed(2)} ${session.currencyCode}';
       });
     } catch (e) {
       setState(() => _message = e.toString());
@@ -135,18 +157,17 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   }
 
   Future<SelfCheckoutSession?> _runAuditFlow(SelfCheckoutSession session) async {
+    final s = context.read<LocaleController>().s;
     final api = context.read<SelfCheckoutApi>();
     try {
       await api.startAudit(session.id);
-    } catch (_) {
-      // May already be auditing.
-    }
+    } catch (_) {}
 
     final targets = List<String>.from(session.auditTargetBarcodes);
     final scanned = <String>{};
 
     while (mounted && scanned.length < targets.length) {
-      final left = targets.where((t) => !scanned.any((s) => s.toLowerCase() == t.toLowerCase())).toList();
+      final left = targets.where((t) => !scanned.any((x) => x.toLowerCase() == t.toLowerCase())).toList();
       if (left.isEmpty) break;
 
       if (!mounted) return null;
@@ -154,16 +175,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          title: const Text(S.randomAudit),
-          content: Text(
-            'أعد مسح ${left.length} من ${targets.length}:\n\n${left.join('\n')}',
-          ),
+          title: Text(s.randomAudit),
+          content: Text('${left.length} / ${targets.length}:\n\n${left.join('\n')}'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(S.auditCancel)),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text(S.scanNext),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.auditCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.scanNext)),
           ],
         ),
       );
@@ -179,14 +195,15 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   }
 
   Future<void> _finalizeOffline() async {
-    final warehouseId = _warehouseCtrl.text.trim();
-    if (warehouseId.isEmpty || _lines.isEmpty) {
-      setState(() => _message = S.needWarehouseCart);
+    final s = context.read<LocaleController>().s;
+    final warehouseId = _warehouseId;
+    if (warehouseId == null || warehouseId.isEmpty || _lines.isEmpty) {
+      setState(() => _message = s.needWarehouseCart);
       return;
     }
 
     if (_imported != null && _imported!.auditRequired && !_imported!.auditCompleted) {
-      setState(() => _message = S.completeAuditFirst);
+      setState(() => _message = s.completeAuditFirst);
       return;
     }
 
@@ -228,9 +245,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     if (importedId != null) {
       try {
         await selfCheckout.close(importedId);
-      } catch (_) {
-        // Sale is queued; close can retry later.
-      }
+      } catch (_) {}
     }
 
     if (!mounted) return;
@@ -238,34 +253,32 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       _lines.clear();
       _imported = null;
       _orderCodeCtrl.clear();
-      _message = 'تم حفظ البيع دون اتصال ($commandId). زامن عند الاتصال.';
+      _message = commandId;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = _lines.fold<double>(0, (s, l) => s + l.quantity * l.unitPrice);
+    final s = context.watch<LocaleController>().s;
+    final total = _lines.fold<double>(0, (sum, l) => sum + l.quantity * l.unitPrice);
     return Scaffold(
-      appBar: AppBar(title: const Text(S.posCheckout)),
+      appBar: AppBar(title: Text(s.posCheckout)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            S.orderQr,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text(s.orderQr, style: Theme.of(context).textTheme.titleSmall),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: _orderCodeCtrl,
-                  decoration: const InputDecoration(labelText: S.orderQrHint),
+                  decoration: InputDecoration(labelText: s.orderQrHint),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: S.importOrder,
+                tooltip: s.importOrder,
                 onPressed: _busy ? null : _scanOrderQr,
                 icon: const Icon(Icons.qr_code_scanner),
               ),
@@ -274,33 +287,41 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: _busy ? null : _importOrder,
-            child: const Text(S.importOrder),
+            child: Text(s.importOrder),
           ),
           const Divider(height: 32),
-          TextField(
-            controller: _warehouseCtrl,
-            decoration: const InputDecoration(labelText: S.warehouseId),
-          ),
+          if (_warehouses.isEmpty)
+            Text(s.noWarehouses)
+          else
+            DropdownButtonFormField<String>(
+              value: _warehouseId,
+              items: _warehouses
+                  .map((w) => DropdownMenuItem(value: w.id, child: Text(w.label)))
+                  .toList(),
+              onChanged: (v) => setState(() => _warehouseId = v),
+              decoration: InputDecoration(labelText: s.warehouse),
+            ),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: _barcodeCtrl,
-                  decoration: const InputDecoration(labelText: S.barcode),
+                  decoration: InputDecoration(labelText: s.barcode),
                   onSubmitted: (_) => _addByBarcode(),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: S.scanProduct,
+                tooltip: s.scanProduct,
                 onPressed: _scanBarcode,
                 icon: const Icon(Icons.qr_code_scanner),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _addByBarcode, child: const Text(S.addToCart)),
+          FilledButton(onPressed: _addByBarcode, child: Text(s.addToCart)),
           const SizedBox(height: 12),
           ..._lines.map(
             (l) => ListTile(
@@ -312,9 +333,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               ),
             ),
           ),
-          Text('${S.total}: ${total.toStringAsFixed(2)}'),
+          Text('${s.total}: ${total.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
-          FilledButton(onPressed: _finalizeOffline, child: const Text(S.completePay)),
+          FilledButton(onPressed: _finalizeOffline, child: Text(s.completePay)),
           if (_message != null) ...[
             const SizedBox(height: 8),
             Text(_message!),

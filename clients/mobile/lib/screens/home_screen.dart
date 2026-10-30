@@ -2,7 +2,7 @@
 import 'package:provider/provider.dart';
 
 import '../auth/auth_repository.dart';
-import '../l10n/app_strings.dart';
+import '../l10n/locale_controller.dart';
 import '../sync/sync_client.dart';
 import '../theme/modern_tech_theme.dart';
 import 'inventory_ops_screen.dart';
@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _syncing = false;
 
   Future<void> _sync() async {
+    final s = context.read<LocaleController>().s;
     setState(() {
       _syncing = true;
       _status = null;
@@ -32,15 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final result = await context.read<SyncClient>().sync();
       setState(() {
         _status = result.offline
-            ? S.syncOffline
-            : 'تم الدفع ${result.pushed} · السحب ${result.pulled}';
+            ? s.syncOffline
+            : s.syncResult(result.pushed, result.pulled);
       });
     } catch (e) {
       final text = e.toString();
       setState(() {
-        _status = text.contains('Device id claim')
-            ? S.syncNeedRelogin
-            : text;
+        _status = text.contains('Device id claim') ? s.syncNeedRelogin : text;
       });
     } finally {
       if (mounted) setState(() => _syncing = false);
@@ -62,12 +61,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleController>();
+    final s = locale.s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(S.staffHome),
+        title: Text(s.staffHome),
         actions: [
+          TextButton(
+            onPressed: () => locale.toggle(),
+            child: Text(s.languageToggle, style: const TextStyle(color: Colors.white)),
+          ),
           IconButton(
-            tooltip: S.signOut,
+            tooltip: s.signOut,
             onPressed: _logout,
             icon: const Icon(Icons.logout),
           ),
@@ -77,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            S.staffHomeHint,
+            s.staffHomeHint,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted),
           ),
           const SizedBox(height: 16),
@@ -90,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.sync),
-            label: const Text(S.syncNow),
+            label: Text(s.syncNow),
           ),
           if (_status != null) ...[
             const SizedBox(height: 12),
@@ -99,22 +104,22 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
           _StaffTile(
             icon: Icons.point_of_sale_outlined,
-            title: S.posCheckout,
+            title: s.posCheckout,
             onTap: () => _open(const PosCheckoutScreen()),
           ),
           _StaffTile(
             icon: Icons.inventory_2_outlined,
-            title: S.products,
+            title: s.products,
             onTap: () => _open(const ProductsScreen()),
           ),
           _StaffTile(
             icon: Icons.qr_code_scanner,
-            title: S.registerProduct,
+            title: s.registerProduct,
             onTap: () => _open(const RegisterProductScreen()),
           ),
           _StaffTile(
             icon: Icons.warehouse_outlined,
-            title: S.inventoryOps,
+            title: s.inventoryOps,
             onTap: () => _open(const InventoryOpsScreen()),
           ),
         ],
@@ -141,7 +146,9 @@ class _StaffTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: ModernTechColors.royalBlue),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.chevron_left),
+        trailing: Icon(Directionality.of(context) == TextDirection.rtl
+            ? Icons.chevron_left
+            : Icons.chevron_right),
         onTap: onTap,
       ),
     );

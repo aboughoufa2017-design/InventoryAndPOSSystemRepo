@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
-import '../auth/auth_repository.dart';
 import '../catalog/catalog_api.dart';
 import '../db/app_database.dart';
-import '../main.dart';
 import '../widgets/barcode_scanner_sheet.dart';
 
 class RegisterProductScreen extends StatefulWidget {
@@ -41,10 +39,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _catalog = CatalogApi(
-        apiBaseUrl: kApiBaseUrl,
-        auth: context.read<AuthRepository>(),
-      );
+      _catalog = context.read<CatalogApi>();
       _loadUnits();
     });
   }

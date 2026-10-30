@@ -3,8 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'auth/auth_repository.dart';
+import 'catalog/catalog_api.dart';
 import 'db/app_database.dart';
-import 'l10n/app_strings.dart';
+import 'l10n/locale_controller.dart';
 import 'scan_go/self_checkout_api.dart';
 import 'screens/home_screen.dart';
 import 'screens/scan_go_welcome_screen.dart';
@@ -32,6 +33,9 @@ Future<void> main() async {
     outbox: outbox,
   );
   final selfCheckout = SelfCheckoutApi(apiBaseUrl: kApiBaseUrl, auth: auth);
+  final catalog = CatalogApi(apiBaseUrl: kApiBaseUrl, auth: auth);
+  final locale = LocaleController();
+  await locale.load();
 
   final loggedIn = await auth.isLoggedIn;
 
@@ -43,6 +47,8 @@ Future<void> main() async {
         Provider<Outbox>.value(value: outbox),
         Provider<SyncClient>.value(value: sync),
         Provider<SelfCheckoutApi>.value(value: selfCheckout),
+        Provider<CatalogApi>.value(value: catalog),
+        ChangeNotifierProvider<LocaleController>.value(value: locale),
       ],
       child: WarehouseApp(loggedIn: loggedIn),
     ),
@@ -56,10 +62,11 @@ class WarehouseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localeCtrl = context.watch<LocaleController>();
     return MaterialApp(
-      title: S.brand,
+      title: localeCtrl.s.brand,
       debugShowCheckedModeBanner: false,
-      locale: const Locale('ar'),
+      locale: localeCtrl.locale,
       supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -69,11 +76,10 @@ class WarehouseApp extends StatelessWidget {
       theme: buildModernTechTheme(),
       builder: (context, child) {
         return Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: localeCtrl.textDirection,
           child: child ?? const SizedBox.shrink(),
         );
       },
-      // Staff stay in staff shell; guests never see staff tools.
       home: loggedIn ? const HomeScreen() : const ScanGoWelcomeScreen(),
     );
   }

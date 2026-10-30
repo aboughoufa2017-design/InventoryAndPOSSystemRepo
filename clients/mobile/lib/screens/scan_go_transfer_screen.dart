@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../l10n/app_strings.dart';
+import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import 'scan_go_welcome_screen.dart';
@@ -13,15 +14,16 @@ class ScanGoTransferScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.watch<LocaleController>().s;
     return Scaffold(
-      appBar: AppBar(title: const Text(S.showAtCashier)),
+      appBar: AppBar(title: Text(s.showAtCashier)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              S.handQr,
+              s.handQr,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: ModernTechColors.muted,
@@ -57,7 +59,7 @@ class ScanGoTransferScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${S.total} ${transfer.grandTotal.toStringAsFixed(2)} ${transfer.currencyCode}',
+              '${s.total} ${transfer.grandTotal.toStringAsFixed(2)} ${transfer.currencyCode}',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
@@ -69,7 +71,7 @@ class ScanGoTransferScreen extends StatelessWidget {
                   (_) => false,
                 );
               },
-              child: const Text(S.done),
+              child: Text(s.done),
             ),
           ],
         ),

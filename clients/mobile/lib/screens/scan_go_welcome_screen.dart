@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_strings.dart';
+import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import 'login_screen.dart';
@@ -27,9 +27,10 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
   }
 
   Future<void> _startGuest() async {
+    final s = context.read<LocaleController>().s;
     final code = _tenantCtrl.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = S.needStoreCode);
+      setState(() => _error = s.needStoreCode);
       return;
     }
     setState(() {
@@ -54,6 +55,8 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleController>();
+    final s = locale.s;
     final theme = Theme.of(context);
     return Scaffold(
       body: Container(
@@ -74,9 +77,16 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: TextButton(
+                    onPressed: () => locale.toggle(),
+                    child: Text(s.languageToggle),
+                  ),
+                ),
                 const Spacer(flex: 2),
                 Text(
-                  S.brand,
+                  s.brand,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     color: ModernTechColors.royalBlue,
@@ -85,7 +95,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  S.guestTagline,
+                  s.guestTagline,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: ModernTechColors.muted,
@@ -98,10 +108,10 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                   textCapitalization: TextCapitalization.characters,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _busy ? null : _startGuest(),
-                  decoration: const InputDecoration(
-                    labelText: S.storeCode,
-                    hintText: S.storeCodeHint,
-                    prefixIcon: Icon(Icons.storefront_outlined),
+                  decoration: InputDecoration(
+                    labelText: s.storeCode,
+                    hintText: s.storeCodeHint,
+                    prefixIcon: const Icon(Icons.storefront_outlined),
                   ),
                 ),
                 if (_error != null) ...[
@@ -121,7 +131,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                           width: 22,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text(S.continueGuest),
+                      : Text(s.continueGuest),
                 ),
                 const Spacer(flex: 3),
                 TextButton(
@@ -134,7 +144,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                             ),
                           );
                         },
-                  child: const Text(S.staffEntry),
+                  child: Text(s.staffEntry),
                 ),
               ],
             ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../l10n/app_strings.dart';
+import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/barcode_scanner_sheet.dart';
@@ -55,7 +55,7 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
       setState(() {
         _session = next;
         _barcodeCtrl.clear();
-        _message = S.added;
+        _message = context.read<LocaleController>().s.added;
       });
     } catch (e) {
       setState(() => _message = e.toString());
@@ -79,7 +79,7 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
 
   Future<void> _finish() async {
     if (_session.lines.isEmpty) {
-      setState(() => _message = S.emptyCart);
+      setState(() => _message = context.read<LocaleController>().s.emptyCart);
       return;
     }
     setState(() {
@@ -105,9 +105,10 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final s = context.watch<LocaleController>().s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(S.scanGo),
+        title: Text(s.scanGo),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
@@ -123,7 +124,7 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(S.cartHint, style: theme.textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted)),
+                Text(s.cartHint, style: theme.textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted)),
                 const SizedBox(height: 16),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,13 +132,13 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                     Expanded(
                       child: TextField(
                         controller: _barcodeCtrl,
-                        decoration: const InputDecoration(labelText: S.barcode),
+                        decoration: InputDecoration(labelText: s.barcode),
                         onSubmitted: (_) => _busy ? null : _add(),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
-                      tooltip: S.scanProduct,
+                      tooltip: s.scanProduct,
                       onPressed: _busy ? null : _scan,
                       style: IconButton.styleFrom(
                         backgroundColor: ModernTechColors.royalBlue,
@@ -151,11 +152,11 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                 const SizedBox(height: 12),
                 FilledButton.tonal(
                   onPressed: _busy ? null : _add,
-                  child: const Text(S.addItem),
+                  child: Text(s.addItem),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  S.items,
+                  s.items,
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -163,7 +164,7 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 32),
                     child: Text(
-                      S.cartEmptyHint,
+                      s.cartEmptyHint,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge?.copyWith(color: ModernTechColors.muted),
                     ),
@@ -201,10 +202,10 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _TotalRow(label: S.subtotal, value: '${_session.subtotal.toStringAsFixed(2)} ${_session.currencyCode}'),
-                    _TotalRow(label: S.tax, value: _session.taxTotal.toStringAsFixed(2)),
+                    _TotalRow(label: s.subtotal, value: '${_session.subtotal.toStringAsFixed(2)} ${_session.currencyCode}'),
+                    _TotalRow(label: s.tax, value: _session.taxTotal.toStringAsFixed(2)),
                     _TotalRow(
-                      label: S.total,
+                      label: s.total,
                       value: '${_session.grandTotal.toStringAsFixed(2)} ${_session.currencyCode}',
                       emphasize: true,
                     ),
@@ -212,7 +213,7 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                     FilledButton.icon(
                       onPressed: _busy || _session.lines.isEmpty ? null : _finish,
                       icon: const Icon(Icons.qr_code_2),
-                      label: const Text(S.finishTransfer),
+                      label: Text(s.finishTransfer),
                     ),
                   ],
                 ),

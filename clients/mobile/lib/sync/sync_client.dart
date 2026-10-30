@@ -113,12 +113,18 @@ class SyncClient {
   }
 
   Future<int> _pull(String token) async {
-    final response = await _http.get(
-      _uri('/api/v1/sync/pull?afterChangeVersion=0&limit=200'),
+    // API maps POST /api/v1/sync/pull (GET returns 405).
+    final response = await _http.post(
+      _uri('/api/v1/sync/pull'),
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
       },
+      body: jsonEncode({
+        'afterChangeVersion': 0,
+        'limit': 200,
+      }),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
