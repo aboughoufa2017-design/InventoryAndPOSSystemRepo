@@ -194,23 +194,58 @@ public static class StartupDatabaseRestore
 
     private static void RunPsqlFile(string connectionString, string sqlPath, ILogger logger)
     {
-        var psql = FindTool("psql", "PG_PSQL");
-        var startInfo = new ProcessStartInfo
+        // pg_dump from Postgres 18+ emits SETs (e.g. transaction_timeout) that older servers reject.
+        var sanitizedPath = Path.Combine(Path.GetTempPath(), $"warehouse-seed-{Guid.NewGuid():N}.sql");
+        try
         {
-            FileName = psql,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add("--dbname");
-        startInfo.ArgumentList.Add(connectionString);
-        startInfo.ArgumentList.Add("--set");
-        startInfo.ArgumentList.Add("ON_ERROR_STOP=1");
-        startInfo.ArgumentList.Add("--file");
-        startInfo.ArgumentList.Add(sqlPath);
+            SanitizeSqlDumpForOlderServers(sqlPath, sanitizedPath);
 
-        RunProcess(startInfo, "psql", logger, fatalExitAbove: 0);
+            var psql = FindTool("psql", "PG_PSQL");
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = psql,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            startInfo.ArgumentList.Add("--dbname");
+            startInfo.ArgumentList.Add(connectionString);
+            startInfo.ArgumentList.Add("--set");
+            startInfo.ArgumentList.Add("ON_ERROR_STOP=1");
+            startInfo.ArgumentList.Add("--file");
+            startInfo.ArgumentList.Add(sanitizedPath);
+
+            RunProcess(startInfo, "psql", logger, fatalExitAbove: 0);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(sanitizedPath);
+            }
+            catch
+            {
+                // best-effort cleanup
+            }
+        }
+    }
+
+    private static void SanitizeSqlDumpForOlderServers(string sourcePath, string destinationPath)
+    {
+        using var reader = new StreamReader(sourcePath);
+        using var writer = new StreamWriter(destinationPath);
+        while (reader.ReadLine() is { } line)
+        {
+            if (line.StartsWith("SET transaction_timeout", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("\\restrict ", StringComparison.Ordinal)
+                || line.StartsWith("\\unrestrict ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            writer.WriteLine(line);
+        }
     }
 
     private static void RunPgRestore(string connectionString, string dumpPath, ILogger logger)

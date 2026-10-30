@@ -11,10 +11,17 @@ Refresh from local data:
 $env:PGPASSWORD = 'change-me'
 & 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fp --clean --if-exists --no-owner --no-acl `
   -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.sql
-# Strip PG 18-only psql meta-commands if present:
+# Strip PG 18-only lines (also stripped automatically at restore time):
 (Get-Content deploy/seed/warehouse.sql) |
-  Where-Object { $_ -notmatch '^\\restrict ' -and $_ -notmatch '^\\unrestrict ' } |
+  Where-Object {
+    $_ -notmatch '^\\restrict ' -and
+    $_ -notmatch '^\\unrestrict ' -and
+    $_ -notmatch '^SET transaction_timeout'
+  } |
   Set-Content deploy/seed/warehouse.sql
+```
+
+Render Postgres is **16**; local dump may be from **18** — keep the seed as plain SQL and avoid PG18-only `SET`s.
 ```
 
 Force restore over existing data (destructive): set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.
