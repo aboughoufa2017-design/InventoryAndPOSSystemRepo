@@ -40,7 +40,24 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+        services.AddOptions<DatabaseOptions>()
+            .Bind(configuration.GetSection(DatabaseOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                if (string.IsNullOrWhiteSpace(options.ConnectionString))
+                {
+                    options.ConnectionString =
+                        PostgresConnectionString.FirstNonEmpty(
+                            configuration["WAREHOUSE_DB_CONNECTION"],
+                            Environment.GetEnvironmentVariable("WAREHOUSE_DB_CONNECTION"))
+                        ?? string.Empty;
+                }
+
+                if (!string.IsNullOrWhiteSpace(options.ConnectionString))
+                {
+                    options.ConnectionString = PostgresConnectionString.Normalize(options.ConnectionString);
+                }
+            });
         services.Configure<PlatformOptions>(configuration.GetSection(PlatformOptions.SectionName));
 
         services.AddScoped<AmbientTenantContext>();

@@ -118,15 +118,23 @@ public static class ProductionHardeningExtensions
         this IHealthChecksBuilder healthChecks,
         IConfiguration configuration)
     {
-        var database = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
-            ?? new DatabaseOptions();
         var redis = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>()
             ?? new RedisOptions();
 
-        if (!string.IsNullOrWhiteSpace(database.ConnectionString))
+        string? postgresConnectionString = null;
+        try
+        {
+            postgresConnectionString = PostgresConnectionString.Resolve(configuration);
+        }
+        catch (InvalidOperationException)
+        {
+            // Reported as unhealthy check below.
+        }
+
+        if (!string.IsNullOrWhiteSpace(postgresConnectionString))
         {
             healthChecks.AddNpgSql(
-                database.ConnectionString,
+                postgresConnectionString,
                 name: "postgres",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready"]);

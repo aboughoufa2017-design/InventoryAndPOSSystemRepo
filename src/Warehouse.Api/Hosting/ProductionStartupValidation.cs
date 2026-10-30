@@ -15,7 +15,7 @@ public static class ProductionStartupValidation
 
         // appsettings leave ConnectionString/SigningKey as "" — treat blank as unset so
         // env vars (Database__*, Redis__*, JWT_SIGNING_KEY) can supply Production secrets.
-        var db = FirstNonEmpty(
+        var db = PostgresConnectionString.FirstNonEmpty(
             builder.Configuration["Database:ConnectionString"],
             builder.Configuration["WAREHOUSE_DB_CONNECTION"]);
         if (db is null)
@@ -23,13 +23,13 @@ public static class ProductionStartupValidation
             errors.Add("Database:ConnectionString (or WAREHOUSE_DB_CONNECTION) is required in Production.");
         }
 
-        var redis = FirstNonEmpty(builder.Configuration["Redis:ConnectionString"]);
+        var redis = PostgresConnectionString.FirstNonEmpty(builder.Configuration["Redis:ConnectionString"]);
         if (redis is null)
         {
             errors.Add("Redis:ConnectionString is required in Production.");
         }
 
-        var jwt = FirstNonEmpty(
+        var jwt = PostgresConnectionString.FirstNonEmpty(
             builder.Configuration["Jwt:SigningKey"],
             builder.Configuration["JWT_SIGNING_KEY"],
             Environment.GetEnvironmentVariable("JWT_SIGNING_KEY"));
@@ -43,18 +43,5 @@ public static class ProductionStartupValidation
             throw new InvalidOperationException(
                 "Production configuration invalid:" + Environment.NewLine + string.Join(Environment.NewLine, errors));
         }
-    }
-
-    private static string? FirstNonEmpty(params string?[] values)
-    {
-        foreach (var value in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return null;
     }
 }
