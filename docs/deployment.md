@@ -173,19 +173,17 @@ VPS Compose + Caddy remains the primary self-hosted path; Render does not replac
 
 ### Migrations on Render
 
-Production does **not** auto-migrate. The Blueprint sets:
+Production does **not** auto-migrate. Free Web Services also **do not support** `preDeployCommand`, so the Blueprint does not declare one.
 
-```text
-preDeployCommand: dotnet Warehouse.Api.dll --migrate-only
-```
-
-**Free** Web Services do not run `preDeployCommand`. On the free plan, run migrate once from the API service **Shell** (or upgrade the API to `0.5c-512mb` / higher so pre-deploy runs automatically):
+After the API is up, open **warehouse-api** → **Shell** and run once:
 
 ```text
 dotnet Warehouse.Api.dll --migrate-only
 ```
 
 Connection strings are already injected as `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` and `Redis__ConnectionString` from the Blueprint links.
+
+If you upgrade the API plan to `0.5c-512mb` or higher, you can add `preDeployCommand: dotnet Warehouse.Api.dll --migrate-only` under `warehouse-api` in `render.yaml` so migrations run automatically before each deploy.
 
 ### Frontend build notes
 

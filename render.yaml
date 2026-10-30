@@ -20,13 +20,13 @@ services:
   - type: web
     name: warehouse-api
     runtime: docker
-    # Free web services sleep and do not run preDeployCommand — upgrade to
-    # 0.5c-512mb (or higher) for always-on + automatic migrate-before-deploy.
+    # Free tier: no preDeployCommand. After first deploy, run migrations once
+    # from the service Shell: dotnet Warehouse.Api.dll --migrate-only
+    # Upgrade to 0.5c-512mb+ for always-on and optional pre-deploy migrate.
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health/live
-    preDeployCommand: dotnet Warehouse.Api.dll --migrate-only
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
