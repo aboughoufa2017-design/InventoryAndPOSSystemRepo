@@ -197,7 +197,16 @@ On start:
 1. If the seed file exists and the DB has **no tenants** (or no tables yet), run `psql -f warehouse.sql` once.
 2. If `WAREHOUSE_MIGRATE_ON_START=true` (set in the Blueprint / Dockerfile), apply EF migrations.
 
-Later starts skip restore once tenant data exists. To force overwrite (destructive), set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.
+Later starts skip restore once tenant data exists. Blueprint currently sets `WAREHOUSE_RESTORE_ON_START=true` so a partial/failed DB can be overwritten; **set it to `false` after login works** so free-tier cold starts do not wipe data.
+
+**Default Render logins** (after bootstrap / successful seed):
+
+| App | Tenant code | Email | Password |
+| --- | --- | --- | --- |
+| Platform | — | `platform@warehouse.local` | `Platform-Pass-123!` |
+| Web | `123` | `platform@warehouse.local` | `Platform-Pass-123!` |
+
+`Platform__Bootstrap*` env vars create the platform operator even when seed restore fails. Tenant `123` data requires a successful seed restore.
 
 Refresh seed from your machine:
 

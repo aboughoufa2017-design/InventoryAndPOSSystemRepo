@@ -47,9 +47,19 @@ services:
           property: connectionString
       - key: JWT_SIGNING_KEY
         sync: false
-      # Seed dump in image (/app/seed/warehouse.dump) restores once when DB has no tenants.
+      # Platform admin (works even if seed restore fails). Same as local Development defaults.
+      - key: Platform__BootstrapEmail
+        value: platform@warehouse.local
+      - key: Platform__BootstrapPassword
+        value: Platform-Pass-123!
+      - key: Platform__BootstrapDisplayName
+        value: Platform Admin
+      # Seed SQL in image; force one overwrite of empty/partial DBs after failed restores.
+      # After tenant data appears, set this to "false" (or remove) so cold starts do not wipe data.
       - key: WAREHOUSE_RESTORE_DUMP_PATH
         value: /app/seed/warehouse.sql
+      - key: WAREHOUSE_RESTORE_ON_START
+        value: "true"
       - key: WAREHOUSE_MIGRATE_ON_START
         value: "true"
       # Set after Static Sites exist (https://warehouse-web-….onrender.com, etc.)

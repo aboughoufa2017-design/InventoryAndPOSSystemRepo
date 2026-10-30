@@ -38,10 +38,21 @@ public static class PlatformBootstrap
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
             var options = scope.ServiceProvider.GetRequiredService<IOptions<PlatformOptions>>().Value;
 
-            var restored = await StartupDatabaseRestore.TryRestoreIfEmptyAsync(
-                configuration,
-                logger,
-                cancellationToken);
+            var restored = false;
+            try
+            {
+                restored = await StartupDatabaseRestore.TryRestoreIfEmptyAsync(
+                    configuration,
+                    logger,
+                    cancellationToken);
+            }
+            catch (Exception restoreEx)
+            {
+                // Seed restore must not block migrate + platform admin bootstrap.
+                logger.LogError(
+                    restoreEx,
+                    "Startup seed restore failed; continuing with migrate/bootstrap.");
+            }
 
             var migrateOnStart = string.Equals(
                 configuration["WAREHOUSE_MIGRATE_ON_START"],
