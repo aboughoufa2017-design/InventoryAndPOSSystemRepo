@@ -47,6 +47,11 @@ services:
           property: connectionString
       - key: JWT_SIGNING_KEY
         sync: false
+      # Session lifetimes (optional; omit to use appsettings defaults: 180 min / 3h Scan & Go)
+      # - key: JWT_ACCESS_TOKEN_MINUTES
+      #   value: "180"
+      # - key: SELF_CHECKOUT_SESSION_HOURS
+      #   value: "3"
       # Platform admin (works even if seed restore fails). Same as local Development defaults.
       - key: Platform__BootstrapEmail
         value: platform@warehouse.local

@@ -15,6 +15,9 @@ A **Render Blueprint** path is also available (`render.yaml` at the repo root) f
 | `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` | PostgreSQL |
 | `Redis__ConnectionString` | Redis (required for `/health/ready`) |
 | `Jwt__SigningKey` / `JWT_SIGNING_KEY` | Access-token signing (≥ 32 chars; **required** in Production — API refuses to start otherwise) |
+| `Jwt__AccessTokenMinutes` / `JWT_ACCESS_TOKEN_MINUTES` | Access JWT lifetime in minutes (default **180** = 3 hours) |
+| `Jwt__RefreshTokenDays` / `JWT_REFRESH_TOKEN_DAYS` | Refresh-token sliding lifetime in days (default **14**) |
+| `SelfCheckout__SessionHours` / `SELF_CHECKOUT_SESSION_HOURS` | Guest Scan & Go cart lifetime in hours (default **3**) |
 | `Cors__Origins__N` / `WEB_ORIGIN` / `PLATFORM_ORIGIN` | Production CORS allowlist |
 | `DOMAIN` | Public hostname for Caddy TLS |
 | `Stripe__SecretKey` / `Stripe__WebhookSecret` / `Stripe__PriceIds__*` | Optional until billing is enabled |

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../l10n/app_strings.dart';
+
 /// Opens a full-screen camera barcode scanner and returns the first value, or null if cancelled.
 Future<String?> scanBarcode(BuildContext context) {
   return Navigator.of(context).push<String>(
@@ -52,10 +54,10 @@ class _BarcodeScannerSheetState extends State<BarcodeScannerSheet> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan barcode'),
+        title: const Text(S.scanProduct),
         actions: [
           IconButton(
-            tooltip: 'Toggle torch',
+            tooltip: 'الإضاءة',
             onPressed: () => _controller.toggleTorch(),
             icon: const Icon(Icons.flash_on),
           ),
@@ -72,8 +74,8 @@ class _BarcodeScannerSheetState extends State<BarcodeScannerSheet> {
                 if (!mounted) return;
                 setState(() {
                   _error = error.errorCode == MobileScannerErrorCode.permissionDenied
-                      ? 'Camera permission denied. Enable camera access or type the barcode instead.'
-                      : 'Camera unavailable (${error.errorCode.name}). Type the barcode instead.';
+                      ? 'إذن الكاميرا مرفوض. فعّل الكاميرا أو أدخل الباركود يدوياً.'
+                      : 'الكاميرا غير متاحة. أدخل الباركود يدوياً.';
                 });
               });
               return const ColoredBox(color: Colors.black);
@@ -109,7 +111,7 @@ class _BarcodeScannerSheetState extends State<BarcodeScannerSheet> {
                       const SizedBox(height: 12),
                       FilledButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Close'),
+                        child: const Text(S.done),
                       ),
                     ],
                   ),

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Warehouse.Application.Abstractions;
 using Warehouse.Application.Platform;
 using Warehouse.Application.Pos;
@@ -17,9 +18,9 @@ public sealed class SelfCheckoutService(
     WarehouseDbContext db,
     ITenantContext tenantContext,
     AmbientTenantContext ambientTenant,
-    IEntitlementService entitlements) : ISelfCheckoutService
+    IEntitlementService entitlements,
+    IOptions<SelfCheckoutOptions> selfCheckoutOptions) : ISelfCheckoutService
 {
-    private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(4);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private const decimal HighValueAuditThreshold = 500m;
     private const double GuestAuditRate = 0.20;
@@ -69,7 +70,7 @@ public sealed class SelfCheckoutService(
             command.IsGuest,
             tenant.CurrencyCode,
             utcNow,
-            SessionLifetime);
+            ResolveSessionLifetime());
 
         db.SelfCheckoutSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);
@@ -581,4 +582,15 @@ public sealed class SelfCheckoutService(
 
     private static string GenerateAccessToken() =>
         Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
+
+    private TimeSpan ResolveSessionLifetime()
+    {
+        var hours = selfCheckoutOptions.Value.SessionHours;
+        if (hours <= 0)
+        {
+            hours = 3;
+        }
+
+        return TimeSpan.FromHours(hours);
+    }
 }

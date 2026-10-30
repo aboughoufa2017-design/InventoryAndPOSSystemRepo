@@ -2,13 +2,16 @@
 import 'package:provider/provider.dart';
 
 import '../auth/auth_repository.dart';
+import '../l10n/app_strings.dart';
 import '../sync/sync_client.dart';
+import '../theme/modern_tech_theme.dart';
 import 'inventory_ops_screen.dart';
 import 'pos_checkout_screen.dart';
 import 'products_screen.dart';
 import 'register_product_screen.dart';
 import 'scan_go_welcome_screen.dart';
 
+/// Staff-only home. Guests never reach this screen.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,11 +32,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final result = await context.read<SyncClient>().sync();
       setState(() {
         _status = result.offline
-            ? 'Offline — sync skipped'
-            : 'Pushed ${result.pushed}, pulled ${result.pulled}';
+            ? S.syncOffline
+            : 'تم الدفع ${result.pushed} · السحب ${result.pulled}';
       });
     } catch (e) {
-      setState(() => _status = e.toString());
+      final text = e.toString();
+      setState(() {
+        _status = text.contains('Device id claim')
+            ? S.syncNeedRelogin
+            : text;
+      });
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
@@ -48,101 +56,93 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _open(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modern Tech'),
+        title: const Text(S.staffHome),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
+            tooltip: S.signOut,
             onPressed: _logout,
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Offline-first scaffold. Mutations queue locally; sync talks to /api/v1/sync. '
-              'Posting rules remain server-side.',
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _syncing ? null : _sync,
-              icon: _syncing
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync),
-              label: const Text('Sync now'),
-            ),
-            if (_status != null) ...[
-              const SizedBox(height: 12),
-              Text(_status!),
-            ],
-            const SizedBox(height: 24),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ProductsScreen(),
-                  ),
-                );
-              },
-              child: const Text('Products / barcode'),
-            ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            S.staffHomeHint,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _syncing ? null : _sync,
+            icon: _syncing
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.sync),
+            label: const Text(S.syncNow),
+          ),
+          if (_status != null) ...[
             const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const RegisterProductScreen(),
-                  ),
-                );
-              },
-              child: const Text('Register product (scan)'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const InventoryOpsScreen(),
-                  ),
-                );
-              },
-              child: const Text('Inventory ops (offline queue)'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const PosCheckoutScreen(),
-                  ),
-                );
-              },
-              child: const Text('POS checkout + Scan & Go receive'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ScanGoWelcomeScreen(),
-                  ),
-                );
-              },
-              child: const Text('Customer Scan & Go'),
-            ),
+            Text(_status!, textAlign: TextAlign.center),
           ],
-        ),
+          const SizedBox(height: 24),
+          _StaffTile(
+            icon: Icons.point_of_sale_outlined,
+            title: S.posCheckout,
+            onTap: () => _open(const PosCheckoutScreen()),
+          ),
+          _StaffTile(
+            icon: Icons.inventory_2_outlined,
+            title: S.products,
+            onTap: () => _open(const ProductsScreen()),
+          ),
+          _StaffTile(
+            icon: Icons.qr_code_scanner,
+            title: S.registerProduct,
+            onTap: () => _open(const RegisterProductScreen()),
+          ),
+          _StaffTile(
+            icon: Icons.warehouse_outlined,
+            title: S.inventoryOps,
+            onTap: () => _open(const InventoryOpsScreen()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StaffTile extends StatelessWidget {
+  const _StaffTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(icon, color: ModernTechColors.royalBlue),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.chevron_left),
+        onTap: onTap,
       ),
     );
   }

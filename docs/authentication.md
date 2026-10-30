@@ -10,8 +10,8 @@ A user belongs to one tenant in the first release. Passwords are hashed with ASP
 
 | Token | Lifetime | Storage on server | Storage on web | Storage on mobile |
 | --- | --- | --- | --- | --- |
-| Access JWT | 15 minutes (configurable) | Not stored | Memory only | Memory only |
-| Refresh | 14 days sliding, 90 days absolute (configurable) | **SHA-256 hash only** (`TokenHash`), plus family id | Prefer `HttpOnly` `Secure` cookie (CSRF later) | Platform secure storage |
+| Access JWT | 3 hours default (`Jwt__AccessTokenMinutes` / `JWT_ACCESS_TOKEN_MINUTES`) | Not stored | Memory only | Memory only |
+| Refresh | 14 days sliding (`JWT_REFRESH_TOKEN_DAYS`), 90 days absolute | **SHA-256 hash only** (`TokenHash`), plus family id | Prefer `HttpOnly` `Secure` cookie (CSRF later) | Platform secure storage |
 
 ### `refresh_tokens` table
 

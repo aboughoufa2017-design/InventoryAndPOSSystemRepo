@@ -119,6 +119,7 @@ public static class DependencyInjection
         services.AddScoped<IPosPricingService, PosPricingService>();
         services.AddScoped<IRestaurantPosService, RestaurantPosService>();
         services.AddScoped<ISelfCheckoutService, SelfCheckoutService>();
+        BindSelfCheckoutOptions(services, configuration);
         services.AddScoped<IChangeLogWriter, ChangeLogWriter>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ISyncOperationHandler, ProductUpsertSyncHandler>();
@@ -130,7 +131,7 @@ public static class DependencyInjection
         services.AddScoped<ISyncOperationHandler, PosSaleFinalizeSyncHandler>();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-        ApplyJwtSigningKeyFromEnvironment(jwt, configuration);
+        ApplyJwtOptionsFromEnvironment(jwt, configuration);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -168,20 +169,63 @@ public static class DependencyInjection
     {
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
-            .PostConfigure(options => ApplyJwtSigningKeyFromEnvironment(options, configuration));
+            .PostConfigure(options => ApplyJwtOptionsFromEnvironment(options, configuration));
     }
 
-    private static void ApplyJwtSigningKeyFromEnvironment(JwtOptions options, IConfiguration configuration)
+    private static void BindSelfCheckoutOptions(IServiceCollection services, IConfiguration configuration)
     {
-        if (!string.IsNullOrWhiteSpace(options.SigningKey))
+        services.AddOptions<SelfCheckoutOptions>()
+            .Bind(configuration.GetSection(SelfCheckoutOptions.SectionName))
+            .PostConfigure(options => ApplySelfCheckoutOptionsFromEnvironment(options, configuration));
+    }
+
+    private static void ApplyJwtOptionsFromEnvironment(JwtOptions options, IConfiguration configuration)
+    {
+        if (string.IsNullOrWhiteSpace(options.SigningKey))
         {
-            return;
+            options.SigningKey =
+                configuration["JWT_SIGNING_KEY"]
+                ?? Environment.GetEnvironmentVariable("JWT_SIGNING_KEY")
+                ?? string.Empty;
         }
 
-        options.SigningKey =
-            configuration["JWT_SIGNING_KEY"]
-            ?? Environment.GetEnvironmentVariable("JWT_SIGNING_KEY")
-            ?? string.Empty;
+        if (TryReadPositiveInt(configuration, "JWT_ACCESS_TOKEN_MINUTES", out var accessMinutes))
+        {
+            options.AccessTokenMinutes = accessMinutes;
+        }
+
+        if (TryReadPositiveInt(configuration, "JWT_REFRESH_TOKEN_DAYS", out var refreshDays))
+        {
+            options.RefreshTokenDays = refreshDays;
+        }
+    }
+
+    private static void ApplySelfCheckoutOptionsFromEnvironment(
+        SelfCheckoutOptions options,
+        IConfiguration configuration)
+    {
+        if (TryReadPositiveInt(configuration, "SELF_CHECKOUT_SESSION_HOURS", out var hours))
+        {
+            options.SessionHours = hours;
+        }
+    }
+
+    private static bool TryReadPositiveInt(IConfiguration configuration, string key, out int value)
+    {
+        value = 0;
+        var raw = configuration[key] ?? Environment.GetEnvironmentVariable(key);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(raw.Trim(), out var parsed) || parsed <= 0)
+        {
+            return false;
+        }
+
+        value = parsed;
+        return true;
     }
 
     private static string EnsureSigningKey(string signingKey)

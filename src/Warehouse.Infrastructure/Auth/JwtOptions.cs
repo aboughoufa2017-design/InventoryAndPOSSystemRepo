@@ -13,8 +13,14 @@ public sealed class JwtOptions
     /// </summary>
     public string SigningKey { get; set; } = string.Empty;
 
-    public int AccessTokenMinutes { get; set; } = 15;
+    /// <summary>
+    /// Access JWT lifetime in minutes. Override with Jwt__AccessTokenMinutes or JWT_ACCESS_TOKEN_MINUTES.
+    /// </summary>
+    public int AccessTokenMinutes { get; set; } = 180;
 
+    /// <summary>
+    /// Sliding refresh-token lifetime in days. Override with Jwt__RefreshTokenDays or JWT_REFRESH_TOKEN_DAYS.
+    /// </summary>
     public int RefreshTokenDays { get; set; } = 14;
 
     public int RefreshTokenAbsoluteDays { get; set; } = 90;

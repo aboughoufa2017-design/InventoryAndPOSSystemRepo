@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../db/app_database.dart';
+import '../l10n/app_strings.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../sync/outbox.dart';
 import '../widgets/barcode_scanner_sheet.dart';
@@ -87,7 +88,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   Future<void> _importOrder() async {
     final raw = _orderCodeCtrl.text.trim();
     if (raw.isEmpty) {
-      setState(() => _message = 'Scan or type the customer order QR / code');
+      setState(() => _message = S.orderQrHint);
       return;
     }
     setState(() {
@@ -100,7 +101,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (session.auditRequired && !session.auditCompleted) {
         final audited = await _runAuditFlow(session);
         if (audited == null) {
-          setState(() => _message = 'Audit cancelled');
+          setState(() => _message = S.auditCancelled);
           return;
         }
         session = audited;
@@ -153,15 +154,15 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          title: const Text('Random audit'),
+          title: const Text(S.randomAudit),
           content: Text(
-            'Rescan ${left.length} of ${targets.length} item(s):\n\n${left.join('\n')}',
+            'أعد مسح ${left.length} من ${targets.length}:\n\n${left.join('\n')}',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(S.auditCancel)),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Scan next'),
+              child: const Text(S.scanNext),
             ),
           ],
         ),
@@ -180,12 +181,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   Future<void> _finalizeOffline() async {
     final warehouseId = _warehouseCtrl.text.trim();
     if (warehouseId.isEmpty || _lines.isEmpty) {
-      setState(() => _message = 'Warehouse and cart required');
+      setState(() => _message = S.needWarehouseCart);
       return;
     }
 
     if (_imported != null && _imported!.auditRequired && !_imported!.auditCompleted) {
-      setState(() => _message = 'Complete random audit before payment');
+      setState(() => _message = S.completeAuditFirst);
       return;
     }
 
@@ -237,7 +238,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       _lines.clear();
       _imported = null;
       _orderCodeCtrl.clear();
-      _message = 'Sale saved offline ($commandId). Sync when online.';
+      _message = 'تم حفظ البيع دون اتصال ($commandId). زامن عند الاتصال.';
     });
   }
 
@@ -245,32 +246,26 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   Widget build(BuildContext context) {
     final total = _lines.fold<double>(0, (s, l) => s + l.quantity * l.unitPrice);
     return Scaffold(
-      appBar: AppBar(title: const Text('POS checkout')),
+      appBar: AppBar(title: const Text(S.posCheckout)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Import a customer Scan & Go QR, complete audit if required, then queue payment.',
-          ),
-          const SizedBox(height: 12),
           Text(
-            'Customer order QR',
+            S.orderQr,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: _orderCodeCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'MTSC:… or code',
-                  ),
+                  decoration: const InputDecoration(labelText: S.orderQrHint),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: 'Scan order QR',
+                tooltip: S.importOrder,
                 onPressed: _busy ? null : _scanOrderQr,
                 icon: const Icon(Icons.qr_code_scanner),
               ),
@@ -279,33 +274,33 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: _busy ? null : _importOrder,
-            child: const Text('Import customer order'),
+            child: const Text(S.importOrder),
           ),
           const Divider(height: 32),
           TextField(
             controller: _warehouseCtrl,
-            decoration: const InputDecoration(labelText: 'Warehouse / branch id'),
+            decoration: const InputDecoration(labelText: S.warehouseId),
           ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: _barcodeCtrl,
-                  decoration: const InputDecoration(labelText: 'Barcode / SKU'),
+                  decoration: const InputDecoration(labelText: S.barcode),
                   onSubmitted: (_) => _addByBarcode(),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: 'Scan barcode',
+                tooltip: S.scanProduct,
                 onPressed: _scanBarcode,
                 icon: const Icon(Icons.qr_code_scanner),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _addByBarcode, child: const Text('Add to cart')),
+          FilledButton(onPressed: _addByBarcode, child: const Text(S.addToCart)),
           const SizedBox(height: 12),
           ..._lines.map(
             (l) => ListTile(
@@ -317,9 +312,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               ),
             ),
           ),
-          Text('Total: ${total.toStringAsFixed(2)}'),
+          Text('${S.total}: ${total.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
-          FilledButton(onPressed: _finalizeOffline, child: const Text('Complete / pay (offline queue)')),
+          FilledButton(onPressed: _finalizeOffline, child: const Text(S.completePay)),
           if (_message != null) ...[
             const SizedBox(height: 8),
             Text(_message!),

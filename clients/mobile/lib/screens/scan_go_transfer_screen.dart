@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../l10n/app_strings.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import 'scan_go_welcome_screen.dart';
@@ -13,22 +14,29 @@ class ScanGoTransferScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Show at cashier')),
+      appBar: AppBar(title: const Text(S.showAtCashier)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Hand this QR to the cashier to pay.',
+              S.handQr,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: ModernTechColors.muted,
+                    height: 1.4,
+                  ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Center(
               child: Container(
-                padding: const EdgeInsets.all(16),
-                color: ModernTechColors.white,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: ModernTechColors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: ModernTechColors.royalBlue.withValues(alpha: 0.15)),
+                ),
                 child: QrImageView(
                   data: transfer.qrPayload,
                   version: QrVersions.auto,
@@ -37,21 +45,21 @@ class ScanGoTransferScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               transfer.code,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    letterSpacing: 4,
-                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w800,
                     color: ModernTechColors.royalBlue,
                   ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Total ${transfer.grandTotal.toStringAsFixed(2)} ${transfer.currencyCode}',
+              '${S.total} ${transfer.grandTotal.toStringAsFixed(2)} ${transfer.currencyCode}',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const Spacer(),
             OutlinedButton(
@@ -61,7 +69,7 @@ class ScanGoTransferScreen extends StatelessWidget {
                   (_) => false,
                 );
               },
-              child: const Text('Done'),
+              child: const Text(S.done),
             ),
           ],
         ),

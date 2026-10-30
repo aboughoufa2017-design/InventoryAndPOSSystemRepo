@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../main.dart';
+import '../l10n/app_strings.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import 'login_screen.dart';
 import 'scan_go_cart_screen.dart';
 
-/// Customer entry: continue as guest or sign in (staff).
+/// Guest-only entry for Scan & Go. Staff login is a discreet secondary action.
 class ScanGoWelcomeScreen extends StatefulWidget {
   const ScanGoWelcomeScreen({super.key});
 
@@ -16,7 +16,7 @@ class ScanGoWelcomeScreen extends StatefulWidget {
 }
 
 class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
-  final _tenantCtrl = TextEditingController(text: '123');
+  final _tenantCtrl = TextEditingController();
   bool _busy = false;
   String? _error;
 
@@ -29,7 +29,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
   Future<void> _startGuest() async {
     final code = _tenantCtrl.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'Enter store / tenant code');
+      setState(() => _error = S.needStoreCode);
       return;
     }
     setState(() {
@@ -54,68 +54,65 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              ModernTechColors.ice,
               Color(0xFFE8EEF8),
+              ModernTechColors.ice,
               ModernTechColors.white,
             ],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Spacer(),
+                const Spacer(flex: 2),
                 Text(
-                  'Modern Tech',
+                  S.brand,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: ModernTechColors.royalBlue,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    color: ModernTechColors.royalBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'مودرن تك',
+                  S.guestTagline,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: ModernTechColors.electricBlue,
-                      ),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: ModernTechColors.muted,
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Scan & Go — shop in-store, pay at the cashier.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: ModernTechColors.muted,
-                      ),
-                ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 40),
                 TextField(
                   controller: _tenantCtrl,
                   textCapitalization: TextCapitalization.characters,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _busy ? null : _startGuest(),
                   decoration: const InputDecoration(
-                    labelText: 'Store code',
-                    hintText: 'Tenant code',
+                    labelText: S.storeCode,
+                    hintText: S.storeCodeHint,
+                    prefixIcon: Icon(Icons.storefront_outlined),
                   ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.error),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 FilledButton(
                   onPressed: _busy ? null : _startGuest,
                   child: _busy
@@ -124,10 +121,10 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                           width: 22,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('Continue as Guest'),
+                      : const Text(S.continueGuest),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton(
+                const Spacer(flex: 3),
+                TextButton(
                   onPressed: _busy
                       ? null
                       : () {
@@ -137,15 +134,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                             ),
                           );
                         },
-                  child: const Text('Staff sign in'),
-                ),
-                const Spacer(flex: 2),
-                Text(
-                  kApiBaseUrl,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: ModernTechColors.muted,
-                      ),
+                  child: const Text(S.staffEntry),
                 ),
               ],
             ),

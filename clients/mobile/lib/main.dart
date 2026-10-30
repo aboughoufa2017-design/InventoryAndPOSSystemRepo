@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'auth/auth_repository.dart';
 import 'db/app_database.dart';
+import 'l10n/app_strings.dart';
 import 'scan_go/self_checkout_api.dart';
 import 'screens/home_screen.dart';
 import 'screens/scan_go_welcome_screen.dart';
@@ -55,8 +57,23 @@ class WarehouseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Modern Tech',
+      title: S.brand,
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: buildModernTechTheme(),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      // Staff stay in staff shell; guests never see staff tools.
       home: loggedIn ? const HomeScreen() : const ScanGoWelcomeScreen(),
     );
   }

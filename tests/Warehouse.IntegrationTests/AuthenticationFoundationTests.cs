@@ -59,7 +59,7 @@ public sealed class AuthenticationFoundationTests
             Issuer = "warehouse-test",
             Audience = "warehouse-test",
             SigningKey = "test-signing-key-at-least-32-chars!!",
-            AccessTokenMinutes = 15,
+            AccessTokenMinutes = 180,
             RefreshTokenDays = 14,
             RefreshTokenAbsoluteDays = 90,
         });
