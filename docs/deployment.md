@@ -2,6 +2,8 @@
 
 Status: **VPS production path implemented** via Docker Compose + Caddy HTTPS. Full CD to a remote host remains manual (`ssh` + `docker compose`). Exercise backup/restore once on the target VPS before claiming commercial RPO/RTO.
 
+A **Render Blueprint** path is also available (`render.yaml` at the repo root) for API + managed Postgres/Redis + both Static Sites (`clients/web`, `clients/platform`). See [Render](#render) below.
+
 ## Environments
 
 `Development`, `Testing`, `Staging`, and `Production` are separate configurations. Secrets differ by environment. `appsettings.json` / `appsettings.Production.json` hold non-secret defaults only. Connection strings, JWT signing keys, and database passwords are environment variables (or a secret manager in production).
@@ -133,6 +135,79 @@ Ephemeral. Losing Redis must not lose posted inventory. After Redis loss, restar
 - Migrate once, then scale API replicas (same image; no auto-migrate).
 - Monitor `/health/ready`, auth `429` rates, and Serilog errors by `CorrelationId`.
 
+## Render
+
+Blueprint file: [`render.yaml`](../render.yaml). It creates:
+
+| Resource | Name | Role |
+| --- | --- | --- |
+| Web Service (Docker) | `warehouse-api` | `Warehouse.Api` from the root [Dockerfile](../Dockerfile) (port **8080**) |
+| Postgres | `warehouse-db` | System of record |
+| Key Value | `warehouse-redis` | Required for Production startup + `/health/ready` |
+| Static Site | `warehouse-web` | Tenant UI (`clients/web` → `dist`) |
+| Static Site | `warehouse-platform` | Platform admin (`clients/platform` → `dist`) |
+
+VPS Compose + Caddy remains the primary self-hosted path; Render does not replace it.
+
+### Apply the Blueprint
+
+1. Push `main` to GitHub (`aboughoufa2017-design/InventoryAndPOSSystemRepo` or your fork).
+2. In [Render](https://dashboard.render.com): **New** → **Blueprint** → select the repo / branch with `render.yaml`.
+3. When prompted (`sync: false` secrets), set:
+   - `JWT_SIGNING_KEY` — random secret, **≥ 32** characters
+   - `Cors__Origins__0` — temporary placeholder is fine (e.g. `https://example.com`); update after Static Sites get URLs
+   - `Cors__Origins__1` — same for the platform site
+4. Create the Blueprint and wait for Postgres, Redis, API, and both Static Sites to finish.
+
+### After first deploy
+
+1. Copy the public URLs for `warehouse-web` and `warehouse-platform` (e.g. `https://warehouse-web-xxxx.onrender.com`).
+2. On **warehouse-api** → Environment, set:
+   - `Cors__Origins__0` = web Static Site origin (no trailing slash)
+   - `Cors__Origins__1` = platform Static Site origin
+3. Redeploy the API so CORS takes effect.
+4. Confirm Static Sites baked `VITE_API_BASE_URL` from the API’s `RENDER_EXTERNAL_URL` (Blueprint `fromService`). If the API URL changed after the first frontend build, **Clear build cache & deploy** on each Static Site.
+5. Health checks:
+   - `GET https://<api>/health/live` → 200
+   - `GET https://<api>/health/ready` → 200 (Postgres + Redis)
+
+### Migrations on Render
+
+Production does **not** auto-migrate. The Blueprint sets:
+
+```text
+preDeployCommand: dotnet Warehouse.Api.dll --migrate-only
+```
+
+**Free** Web Services do not run `preDeployCommand`. On the free plan, run migrate once from the API service **Shell** (or upgrade the API to `0.5c-512mb` / higher so pre-deploy runs automatically):
+
+```text
+dotnet Warehouse.Api.dll --migrate-only
+```
+
+Connection strings are already injected as `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` and `Redis__ConnectionString` from the Blueprint links.
+
+### Frontend build notes
+
+- Build command: `npm ci && npm run build` (lockfiles present under each client).
+- Publish directory: `dist`.
+- SPA fallback: Blueprint rewrite `/*` → `/index.html` (React Router `BrowserRouter`).
+- `VITE_API_BASE_URL` is build-time only; it must be the public API origin with **no** trailing slash.
+
+### Plans and cold starts
+
+Default Blueprint plans are **`free`** where available (API, Postgres, Redis). Expect:
+
+- API **cold starts** after idle on free Web Services
+- Free Redis has **no persistence** (acceptable — Redis is not the system of record)
+- Free Postgres limits; upgrade plans in the Dashboard or edit `plan:` in `render.yaml` when you outgrow them
+
+Static Sites are CDN-backed and do not sleep.
+
+### Optional: custom domains
+
+Attach custom domains in the Render Dashboard for API + both Static Sites, then update `Cors__Origins__*` and rebuild the frontends if the API public URL changes.
+
 ## CI
 
-`.github/workflows/ci.yml` restores, builds, and tests on .NET 8, builds the API image, validates prod compose config, then runs a Compose smoke that waits for `/health/ready`. It does not deploy to staging/production.
+`.github/workflows/ci.yml` restores, builds, and tests on .NET 8, builds the API image, validates prod compose config, then runs a Compose smoke that waits for `/health/ready`. It does not deploy to staging/production (VPS or Render).

@@ -1,0 +1,88 @@
+# Render Blueprint — Warehouse API + web + platform
+# Docs: docs/deployment.md (Render section)
+# Apply: Render Dashboard → New → Blueprint → this repo (branch main)
+
+databases:
+  - name: warehouse-db
+    databaseName: warehouse
+    user: warehouse
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: [] # private network only (API on Render)
+
+services:
+  - type: keyvalue
+    name: warehouse-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # private network only
+
+  - type: web
+    name: warehouse-api
+    runtime: docker
+    # Free web services sleep and do not run preDeployCommand — upgrade to
+    # 0.5c-512mb (or higher) for always-on + automatic migrate-before-deploy.
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    preDeployCommand: dotnet Warehouse.Api.dll --migrate-only
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: Database__ConnectionString
+        fromDatabase:
+          name: warehouse-db
+          property: connectionString
+      - key: WAREHOUSE_DB_CONNECTION
+        fromDatabase:
+          name: warehouse-db
+          property: connectionString
+      - key: Redis__ConnectionString
+        fromService:
+          type: keyvalue
+          name: warehouse-redis
+          property: connectionString
+      - key: JWT_SIGNING_KEY
+        sync: false
+      # Set after Static Sites exist (https://warehouse-web-….onrender.com, etc.)
+      - key: Cors__Origins__0
+        sync: false
+      - key: Cors__Origins__1
+        sync: false
+
+  - type: web
+    name: warehouse-web
+    runtime: static
+    rootDir: clients/web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: warehouse-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: warehouse-platform
+    runtime: static
+    rootDir: clients/platform
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: warehouse-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL

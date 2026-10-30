@@ -16,7 +16,7 @@ Foundation through Phase 12 and **full production readiness** (VPS Compose + ent
 | Offline-first | [docs/offline-first.md](docs/offline-first.md) |
 | Synchronization | [docs/synchronization.md](docs/synchronization.md) |
 | Conflict resolution | [docs/conflict-resolution.md](docs/conflict-resolution.md) |
-| Deployment (VPS Compose + Caddy) | [docs/deployment.md](docs/deployment.md) |
+| Deployment (VPS Compose + Caddy, Render Blueprint) | [docs/deployment.md](docs/deployment.md) |
 | Stock counts | [docs/stock-counts.md](docs/stock-counts.md) |
 | Reports | [docs/reports.md](docs/reports.md) |
 | POS (Libya retail) | [docs/pos/README.md](docs/pos/README.md) · [docs/pos/inventory-integration-map.md](docs/pos/inventory-integration-map.md) |
