@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore Warehouse.sln
+
+      - name: Build
+        run: dotnet build Warehouse.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Warehouse.sln --no-build --configuration Release
+
+      - name: Build API image
+        run: docker build --tag warehouse-api:ci .
+
+      - name: Validate prod compose config
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null
+        env:
+          JWT_SIGNING_KEY: ci-only-signing-key-change-me-32chars!
+          POSTGRES_PASSWORD: ci-postgres-password
+          DOMAIN: localhost
+
+      - name: Compose ready smoke
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/health/ready; then
+              echo "ready ok"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ready check failed"
+          docker compose logs api
+          exit 1
+        env:
+          JWT_SIGNING_KEY: ci-only-signing-key-change-me-32chars!

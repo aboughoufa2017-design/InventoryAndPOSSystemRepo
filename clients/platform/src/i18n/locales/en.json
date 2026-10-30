@@ -1,0 +1,205 @@
+{
+  "app": {
+    "brand": "ModernTech Platform",
+    "brandEn": "منصة مودرن تك",
+    "tagline": "SaaS operator console — tenants and subscriptions",
+    "loading": "Loading…"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "inventory": "Inventory",
+    "purchasing": "Purchasing",
+    "sales": "Sales",
+    "transfers": "Transfers",
+    "sync": "Sync",
+    "admin": "Admin",
+    "logout": "Log out"
+  },
+  "lang": {
+    "ar": "العربية",
+    "en": "English",
+    "switch": "Language"
+  },
+  "login": {
+    "title": "Sign in",
+    "tenantCode": "Tenant code",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "error": "Sign-in failed. Check your details and try again.",
+    "hint": "Use the tenant and user credentials issued by your administrator.",
+    "platformLink": "Platform operator sign-in"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {{name}}",
+    "subtitle": "Pick a module to work in, or check synchronization status.",
+    "products": "Product catalog",
+    "productsDesc": "Units, categories, prices, barcodes",
+    "inventory": "Balances & movements",
+    "inventoryDesc": "On-hand stock and adjustments",
+    "purchasing": "Purchase orders",
+    "purchasingDesc": "Suppliers, receiving, returns",
+    "sales": "Sales orders",
+    "salesDesc": "Customers, shipping, returns",
+    "transfers": "Warehouse transfers",
+    "transfersDesc": "Dispatch and partial receive",
+    "sync": "Sync status",
+    "syncDesc": "Push, pull, and retries"
+  },
+  "products": {
+    "title": "Products",
+    "empty": "No products yet.",
+    "sku": "SKU",
+    "name": "Name",
+    "salePrice": "Sale price",
+    "purchasePrice": "Purchase price",
+    "active": "Active",
+    "inactive": "Inactive",
+    "refresh": "Refresh",
+    "loadError": "Could not load products."
+  },
+  "inventory": {
+    "title": "Inventory",
+    "warehouses": "Warehouses",
+    "balances": "Balances",
+    "onHand": "On hand",
+    "reserved": "Reserved",
+    "available": "Available",
+    "product": "Product",
+    "empty": "No balances.",
+    "loadError": "Could not load inventory."
+  },
+  "purchasing": {
+    "title": "Purchasing",
+    "empty": "No purchase orders.",
+    "status": "Status",
+    "payment": "Payment",
+    "total": "Total",
+    "loadError": "Could not load purchase orders."
+  },
+  "sales": {
+    "title": "Sales",
+    "empty": "No sales orders.",
+    "status": "Status",
+    "payment": "Payment",
+    "total": "Total",
+    "loadError": "Could not load sales orders."
+  },
+  "transfers": {
+    "title": "Transfers",
+    "empty": "No transfers.",
+    "status": "Status",
+    "source": "Source",
+    "destination": "Destination",
+    "loadError": "Could not load transfers."
+  },
+  "sync": {
+    "title": "Synchronization",
+    "subtitle": "Push local operations, then pull server changes.",
+    "afterVersion": "After version",
+    "pull": "Pull changes",
+    "pulling": "Pulling…",
+    "empty": "No new changes.",
+    "version": "Version",
+    "entity": "Entity",
+    "operation": "Operation",
+    "security": "Device security",
+    "deviceRevoked": "Device revoked",
+    "userDisabled": "User disabled",
+    "tenantSuspended": "Tenant suspended",
+    "blocksApply": "Apply blocked",
+    "ok": "Allowed",
+    "blocked": "Blocked",
+    "loadError": "Could not pull from the server.",
+    "note": "The offline IndexedDB outbox comes later; this screen calls pull directly."
+  },
+  "admin": {
+    "title": "Administration",
+    "roles": "Roles",
+    "permissions": "Permissions",
+    "hint": "Requires users.manage permission.",
+    "loadError": "Could not load, or you lack permission."
+  },
+  "platform": {
+    "login": {
+      "title": "Platform operator",
+      "submit": "Sign in to platform",
+      "hint": "SaaS operator credentials — not a tenant user.",
+      "error": "Platform sign-in failed.",
+      "backToTenant": "Tenant user sign-in"
+    },
+    "shell": {
+      "tagline": "SaaS platform administration"
+    },
+    "nav": {
+      "tenants": "Tenants",
+      "provision": "Provision tenant"
+    },
+    "tenants": {
+      "title": "Tenants",
+      "hint": "Provision, suspend, and review subscription readiness.",
+      "empty": "No tenants yet.",
+      "loadError": "Could not load tenants.",
+      "code": "Code",
+      "name": "Name",
+      "currency": "Currency",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "open": "Open"
+    },
+    "provision": {
+      "title": "Provision tenant",
+      "hint": "Creates tenant, system roles, Owner user, and a subscription.",
+      "tenantCode": "Tenant code",
+      "tenantName": "Tenant name",
+      "currency": "Currency (ISO)",
+      "timezone": "Time zone",
+      "plan": "Plan",
+      "ownerName": "Owner display name",
+      "ownerEmail": "Owner email",
+      "ownerPassword": "Owner password",
+      "submit": "Create tenant",
+      "submitting": "Creating…",
+      "error": "Could not provision tenant."
+    },
+    "detail": {
+      "title": "Tenant",
+      "hint": "Lifecycle, usage, readiness, and subscription.",
+      "loadError": "Could not load tenant.",
+      "actionError": "Action failed.",
+      "suspend": "Suspend",
+      "resume": "Resume",
+      "suspendedOk": "Tenant suspended.",
+      "resumedOk": "Tenant resumed.",
+      "usage": "Usage",
+      "users": "Users",
+      "warehouses": "Warehouses",
+      "devices": "Devices",
+      "products": "Products",
+      "readiness": "Readiness",
+      "hasOwner": "Owner user",
+      "hasWarehouse": "Warehouse",
+      "hasProduct": "Product",
+      "hasSubscription": "Active subscription",
+      "missing": "Missing",
+      "ready": "Ready for operations",
+      "subscription": "Subscription",
+      "subStatus": "Status",
+      "saveSubscription": "Save subscription",
+      "subscriptionSaved": "Subscription updated."
+    }
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "retry": "Retry",
+    "back": "Back",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark"
+  }
+}

@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Windows + OneDrive: build outside the synced tree so Smart App Control
+    does not block unsigned DLLs (0x800711C7). Skip in CI/containers.
+  -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' AND '$(LOCALAPPDATA)' != '' AND '$(CI)' == '' AND '$(DOTNET_RUNNING_IN_CONTAINER)' != 'true'">
+    <WarehouseLocalBuildRoot>$([System.IO.Path]::Combine($(LOCALAPPDATA), 'WarehouseBuild'))</WarehouseLocalBuildRoot>
+    <BaseOutputPath>$(WarehouseLocalBuildRoot)\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(WarehouseLocalBuildRoot)\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,65 @@
+# Production overlay — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Required env: JWT_SIGNING_KEY (>=32), POSTGRES_PASSWORD, DOMAIN
+
+services:
+  postgres:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  api:
+    ports: !reset []
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-warehouse};Username=${POSTGRES_USER:-warehouse};Password=${POSTGRES_PASSWORD}
+      Redis__ConnectionString: redis:6379
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Cors__Origins__0: ${WEB_ORIGIN:-https://app.example.com}
+      Cors__Origins__1: ${PLATFORM_ORIGIN:-https://platform.example.com}
+      Platform__BootstrapEmail: ${PLATFORM_BOOTSTRAP_EMAIL:-}
+      Platform__BootstrapPassword: ${PLATFORM_BOOTSTRAP_PASSWORD:-}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Stripe__PublishableKey: ${STRIPE_PUBLISHABLE_KEY:-}
+    restart: unless-stopped
+
+  migrate:
+    profiles: ["migrate"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["dotnet", "Warehouse.Api.dll", "--migrate-only"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-warehouse};Username=${POSTGRES_USER:-warehouse};Password=${POSTGRES_PASSWORD}
+      Redis__ConnectionString: redis:6379
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

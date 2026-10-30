@@ -1,0 +1,13 @@
+**/.git
+**/.vs
+**/.idea
+**/bin
+**/obj
+**/.env
+**/*.user
+**/node_modules
+clients
+tests
+docs
+plan.md
+**/*.md

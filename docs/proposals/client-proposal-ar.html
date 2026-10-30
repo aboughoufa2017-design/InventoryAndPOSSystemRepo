@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>عرض فني ومالي — نظام إدارة المخازن | الإبداع التقني</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #5a6577;
+      --line: #d8dee8;
+      --paper: #f7f5f1;
+      --card: #ffffff;
+      --brand: #0f4c5c;
+      --brand-soft: #e6f0f2;
+      --accent: #c45c26;
+      --ok: #1f6b4a;
+    }
+
+    * { box-sizing: border-box; }
+
+    @page {
+      size: A4;
+      margin: 16mm 14mm 18mm 14mm;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+      font-size: 11pt;
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 18mm 16mm;
+      background: var(--card);
+    }
+
+    @media print {
+      body { background: white; }
+      .page { padding: 0; max-width: none; box-shadow: none; }
+      .no-print { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      padding: 0.75rem;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    .toolbar button {
+      border: 0;
+      background: var(--brand);
+      color: #fff;
+      padding: 0.55rem 1.1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .cover {
+      min-height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+      border: 1px solid var(--line);
+      padding: 18mm 16mm;
+      background:
+        linear-gradient(165deg, #ffffff 0%, #f3f7f8 55%, #e8f1f3 100%);
+    }
+
+    .brand-mark {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: 0;
+      margin: 0 0 0.35rem;
+    }
+
+    .brand-en {
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .doc-type {
+      display: inline-block;
+      margin-top: 2.5rem;
+      padding: 0.35rem 0.85rem;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-weight: 600;
+      font-size: 0.9rem;
+      border-radius: 999px;
+    }
+
+    .cover h1 {
+      font-size: 2rem;
+      line-height: 1.35;
+      margin: 1.25rem 0 0.75rem;
+      font-weight: 700;
+      max-width: 16ch;
+    }
+
+    .cover .lead {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 36ch;
+      margin: 0;
+    }
+
+    .price-box {
+      margin-top: 2.5rem;
+      padding: 1.25rem 1.4rem;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 1rem;
+    }
+
+    .price-box .label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 0.25rem;
+    }
+
+    .price-box .amount {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--brand);
+      margin: 0;
+      font-family: "IBM Plex Sans", "IBM Plex Sans Arabic", sans-serif;
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+
+    .price-box .note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: left;
+      direction: ltr;
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1.5rem;
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.92rem;
+    }
+
+    .meta-grid dt { color: var(--muted); margin: 0; }
+    .meta-grid dd { margin: 0.1rem 0 0; font-weight: 600; }
+
+    h2 {
+      font-size: 1.25rem;
+      color: var(--brand);
+      margin: 0 0 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--brand-soft);
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 1.25rem 0 0.45rem;
+      color: var(--ink);
+    }
+
+    p { margin: 0 0 0.75rem; }
+
+    section {
+      margin-bottom: 1.6rem;
+      page-break-inside: avoid;
+    }
+
+    ul {
+      margin: 0.35rem 0 0.85rem;
+      padding-inline-start: 1.25rem;
+    }
+
+    li { margin-bottom: 0.35rem; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      padding: 0.9rem 1rem;
+      background: #fcfcfb;
+    }
+
+    .card h3 { margin-top: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.55rem 0.65rem;
+      vertical-align: top;
+      text-align: right;
+    }
+
+    th {
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-weight: 600;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      background: #e8f5ee;
+      color: var(--ok);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .tag.warn {
+      background: #f8efe6;
+      color: var(--accent);
+    }
+
+    .total-row td {
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .ltr {
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-family: "IBM Plex Sans", "IBM Plex Sans Arabic", sans-serif;
+    }
+
+    footer.doc-foot {
+      margin-top: 2rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .sign-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .sign {
+      border: 1px dashed var(--line);
+      min-height: 110px;
+      padding: 0.85rem;
+    }
+
+    .sign strong { display: block; margin-bottom: 2.5rem; }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button type="button" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+
+  <div class="page">
+    <!-- COVER -->
+    <section class="cover">
+      <div>
+        <p class="brand-mark">الإبداع التقني</p>
+        <p class="brand-en">Al-Ibdaa Al-Taqni · Technical Creativity</p>
+        <span class="doc-type">عرض فني ومالي — سعر ثابت</span>
+        <h1>نظام إدارة المخازن متعدد المستأجرين</h1>
+        <p class="lead">
+          منصة برمجيات كخدمة (SaaS) لإدارة المخزون والمشتريات والمبيعات والتحويلات،
+          مع لوحة مشغّل للمنصة وتطبيق ويب للمستأجر، جاهزة للتشغيل المحلي والسحابي.
+        </p>
+
+        <div class="price-box">
+          <div>
+            <p class="label">القيمة الإجمالية الثابتة للمشروع</p>
+            <p class="amount">USD 5,000</p>
+          </div>
+          <p class="note">Fixed price<br />خمسة آلاف دولار أمريكي</p>
+        </div>
+      </div>
+
+      <dl class="meta-grid">
+        <div>
+          <dt>الجهة المقدِّمة</dt>
+          <dd>شركة الإبداع التقني</dd>
+        </div>
+        <div>
+          <dt>نوع العقد</dt>
+          <dd>تنفيذ بنظام السعر الثابت</dd>
+        </div>
+        <div>
+          <dt>تاريخ العرض</dt>
+          <dd><span class="ltr">2026-09-28</span></dd>
+        </div>
+        <div>
+          <dt>صلاحية العرض</dt>
+          <dd>٣٠ يومًا من تاريخ الإصدار</dd>
+        </div>
+        <div>
+          <dt>اللغة الافتراضية للواجهة</dt>
+          <dd>العربية (RTL) مع الإنجليزية</dd>
+        </div>
+        <div>
+          <dt>مرجع داخلي</dt>
+          <dd class="ltr">WH-SaaS-FP-5000</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- INTRO -->
+    <section>
+      <h2>١. مقدمة</h2>
+      <p>
+        تقدّم <strong>الإبداع التقني</strong> هذا العرض لتنفيذ وتسليم نظام إدارة مخازن احترافي
+        متعدد الشركات (Multi-tenant SaaS)، يمكّن العميل من تشغيل عمليات المخزون والشراء والبيع
+        والتحويل عبر واجهة ويب حديثة، مع لوحة إدارة للمنصة لإنشاء المستأجرين وإدارة الاشتراكات.
+      </p>
+      <p>
+        السعر المعروض <strong class="ltr">USD 5,000</strong> هو <strong>سعر ثابت شامل</strong>
+        لنطاق العمل الموضّح في هذا المستند، ولا يتغيّر إلا إذا طلب العميل توسيعًا مكتوبًا خارج النطاق.
+      </p>
+    </section>
+
+    <section>
+      <h2>٢. أهداف النظام</h2>
+      <ul>
+        <li>إدارة مخزون دقيقة متعددة المخازن مع أرصدة وحركات وتسويات.</li>
+        <li>دعم أوامر الشراء والاستلام وأوامر البيع والشحن والتحويلات بين المخازن.</li>
+        <li>عزل بيانات كل مستأجر (شركة) بشكل صارم مع صلاحيات وأدوار.</li>
+        <li>لوحة مشغّل لإنشاء المستأجرين وتعليقهم ومتابعة الجاهزية والاستخدام.</li>
+        <li>واجهات عربية افتراضية واتجاه من اليمين لليسار، مع تبديل للإنجليزية.</li>
+        <li>أساس تقني قابل للتوسّع والنشر عبر Docker مع فحوصات صحة ومراقبة أساسية.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>٣. نطاق العمل المشمول بالسعر الثابت</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:28%">المكوّن</th>
+            <th>ما يشمله التسليم</th>
+            <th style="width:14%">الحالة</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>واجهة المستأجر (Web)</td>
+            <td>تسجيل الدخول، لوحة التحكم، المنتجات، المخزون، المشتريات، المبيعات، التحويلات، المزامنة، إدارة المستخدمين والأدوار</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>لوحة مشغّل المنصة</td>
+            <td>تطبيق React منفصل: دخول المشغّل، قائمة المستأجرين، الإنشاء، التعليق/الاستئناف، الاشتراك، الاستخدام والجاهزية</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>واجهة برمجة التطبيقات API</td>
+            <td>مصادقة JWT، الكتالوج، المخازن والمخزون، المشتريات، المبيعات، التحويلات، المزامنة، إدارة المستخدمين، منصة SaaS</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>قاعدة البيانات</td>
+            <td>PostgreSQL مع ترحيلات EF، عزل المستأجرين، أدوار وصلاحيات نظامية</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>التشغيل والنشر</td>
+            <td>Docker Compose (قاعدة بيانات + Redis + API)، فحوصات Live/Ready، تحديد معدّل الطلبات، سجلات منظمة، إعداد إنتاج، توثيق النسخ الاحتياطي والترحيل</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>التوثيق</td>
+            <td>وثائق معمارية وتشغيلية للمشروع، وتعليمات التشغيل المحلي</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+          <tr>
+            <td>التدريب والتسليم</td>
+            <td>جلسة تسليم واحدة (حتى ساعتين) + دليل استخدام مختصر بالعربية</td>
+            <td><span class="tag">مشمول</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>٤. الوحدات الوظيفية</h2>
+      <div class="two-col">
+        <div class="card">
+          <h3>عمليات المخزن</h3>
+          <ul>
+            <li>منتجات ووحدات وباركود وأسعار</li>
+            <li>مخازن ومواقع وأرصدة</li>
+            <li>رصيد افتتاحي وتسويات</li>
+            <li>تحويلات: مسودة ← إرسال ← استلام</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>التجارة والصلاحيات</h3>
+          <ul>
+            <li>موردون وأوامر شراء واستلام</li>
+            <li>عملاء وأوامر بيع وشحن</li>
+            <li>مستخدمون وأدوار وصلاحيات</li>
+            <li>مزامنة ودعم العمل دون اتصال لاحقًا</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>٥. ما لا يشمله السعر الثابت</h2>
+      <p>البنود التالية <strong>خارج</strong> نطاق الـ <span class="ltr">USD 5,000</span> ويمكن تقديم عرض منفصل لها عند الطلب:</p>
+      <ul>
+        <li>تطبيق الجوال (Flutter) والعمل دون اتصال الكامل على الأجهزة المحمولة.</li>
+        <li>تكامل بوابات الدفع الإلكتروني (Stripe وغيرها).</li>
+        <li>تقارير PDF/Excel المتقدمة ولوحات مؤشرات مخصّصة حسب طلب العميل.</li>
+        <li>جرد المخزون الدوري (Stock counts) كوحدة مستقلة موسّعة.</li>
+        <li>استضافة سحابية مدفوعة، وشهادات SSL التجارية، والنسخ الاحتياطي المدارة لدى مزوّد خارجي.</li>
+        <li>تخصيصات UI/UX خارج الهوية الحالية، أو ربط مع أنظمة ERP طرف ثالث.</li>
+        <li>دعم فني شهري بعد فترة الضمان (انظر بند الضمان).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>٦. العرض المالي</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>البند</th>
+            <th>الوصف</th>
+            <th style="width:22%">القيمة (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>تحليل، تنفيذ، وتسليم النظام وفق النطاق أعلاه</td>
+            <td>يشمل الواجهات، الـ API، قاعدة البيانات، لوحة المنصة، والتوثيق والتدريب المختصر</td>
+            <td class="ltr">5,000.00</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="2">الإجمالي الثابت (Fixed Price)</td>
+            <td class="ltr">5,000.00</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        المبلغ ثابت وغير قابل للزيادة ضمن النطاق المتفق عليه. أي طلب إضافي يُوثَّق كتغيير نطاق (Change Request)
+        ويُسعَّر بشكل منفصل بعد موافقة الطرفين كتابيًا.
+      </p>
+    </section>
+
+    <section>
+      <h2>٧. جدول الدفع المقترح</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>الدفعة</th>
+            <th>المرحلة</th>
+            <th style="width:18%">النسبة</th>
+            <th style="width:22%">المبلغ (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>الأولى</td>
+            <td>عند توقيع العرض / بدء التنفيذ</td>
+            <td>٤٠٪</td>
+            <td class="ltr">2,000.00</td>
+          </tr>
+          <tr>
+            <td>الثانية</td>
+            <td>عند تسليم بيئة تجريبية جاهزة للمعاينة</td>
+            <td>٤٠٪</td>
+            <td class="ltr">2,000.00</td>
+          </tr>
+          <tr>
+            <td>الثالثة</td>
+            <td>عند التسليم النهائي وقبول العميل</td>
+            <td>٢٠٪</td>
+            <td class="ltr">1,000.00</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>يمكن الاتفاق على تحويل بنكي أو وسيلة دفع أخرى يحدّدها الطرفان في عقد التنفيذ.</p>
+    </section>
+
+    <section>
+      <h2>٨. مدة التنفيذ والضمان</h2>
+      <ul>
+        <li><strong>مدة التنفيذ التقديرية:</strong> وفق جاهزية البيئة والمتطلبات النهائية للعميل (يُحدَّد تاريخ البدء والانتهاء في أمر التعيين).</li>
+        <li><strong>فترة ضمان:</strong> ٣٠ يومًا من تاريخ القبول النهائي لإصلاح العيوب ضمن النطاق المتفق عليه دون تكلفة إضافية.</li>
+        <li><strong>خارج الضمان:</strong> الميزات الجديدة، أخطاء الاستخدام، مشاكل البنية التحتية لدى العميل، أو التعديلات خارج النطاق.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>٩. التزامات الطرفين</h2>
+      <div class="two-col">
+        <div class="card">
+          <h3>التزامات الإبداع التقني</h3>
+          <ul>
+            <li>تسليم النظام وفق النطاق والجودة المتفق عليها</li>
+            <li>الحفاظ على سرية بيانات العميل</li>
+            <li>تقديم جلسة تسليم ودليل استخدام مختصر</li>
+            <li>إصلاح عيوب الضمان خلال الفترة المحددة</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>التزامات العميل</h3>
+          <ul>
+            <li>توفير نقطة اتصال وقرارات في وقت معقول</li>
+            <li>توفير بيئة الاستضافة أو اعتماد البيئة المحلية المتفق عليها</li>
+            <li>سداد الدفعات حسب الجدول</li>
+            <li>إجراء اختبار القبول خلال مدة متفق عليها</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>١٠. القبول والتوقيع</h2>
+      <p>
+        يُعدّ توقيع هذا العرض (أو إصدار أمر شراء / عقد يحيل إليه) موافقة على النطاق والسعر الثابت
+        <strong class="ltr">USD 5,000</strong> وشروط الدفع الواردة أعلاه.
+      </p>
+      <div class="sign-grid">
+        <div class="sign">
+          <strong>عن العميل</strong>
+          الاسم: …………………………<br />
+          الصفة: …………………………<br />
+          التوقيع: ………………………<br />
+          التاريخ: ………………………
+        </div>
+        <div class="sign">
+          <strong>عن الإبداع التقني</strong>
+          الاسم: …………………………<br />
+          الصفة: …………………………<br />
+          التوقيع: ………………………<br />
+          التاريخ: ………………………
+        </div>
+      </div>
+    </section>
+
+    <footer class="doc-foot">
+      <span>الإبداع التقني — عرض نظام إدارة المخازن</span>
+      <span class="ltr">WH-SaaS-FP-5000 · USD 5,000 Fixed</span>
+    </footer>
+  </div>
+</body>
+</html>
