@@ -161,3 +161,42 @@ internal sealed class RestaurantOpenOrderConfiguration : IEntityTypeConfiguratio
         builder.HasOne<RestaurantTable>().WithMany().HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class SelfCheckoutSessionConfiguration : IEntityTypeConfiguration<SelfCheckoutSession>
+{
+    public void Configure(EntityTypeBuilder<SelfCheckoutSession> builder)
+    {
+        builder.ToTable("self_checkout_sessions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Code).HasMaxLength(16).IsRequired();
+        builder.Property(x => x.AccessToken).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+        builder.Property(x => x.Subtotal).HasPrecision(MoneyPrecision.Precision, MoneyPrecision.Scale);
+        builder.Property(x => x.TaxTotal).HasPrecision(MoneyPrecision.Precision, MoneyPrecision.Scale);
+        builder.Property(x => x.GrandTotal).HasPrecision(MoneyPrecision.Precision, MoneyPrecision.Scale);
+        builder.Property(x => x.AuditTargetBarcodesJson).HasColumnType("text");
+        builder.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+        builder.HasIndex(x => x.AccessToken).IsUnique();
+        builder.HasIndex(x => new { x.TenantId, x.Status, x.ExpiresAtUtc });
+        builder.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SelfCheckoutLineConfiguration : IEntityTypeConfiguration<SelfCheckoutLine>
+{
+    public void Configure(EntityTypeBuilder<SelfCheckoutLine> builder)
+    {
+        builder.ToTable("self_checkout_lines");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.SkuSnapshot).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.NameSnapshot).HasMaxLength(256).IsRequired();
+        builder.Property(x => x.BarcodeSnapshot).HasMaxLength(64);
+        builder.Property(x => x.Quantity).HasPrecision(QuantityPrecision.Precision, QuantityPrecision.Scale);
+        builder.Property(x => x.UnitPrice).HasPrecision(MoneyPrecision.Precision, MoneyPrecision.Scale);
+        builder.Property(x => x.LineTotal).HasPrecision(MoneyPrecision.Precision, MoneyPrecision.Scale);
+        builder.HasIndex(x => new { x.TenantId, x.SessionId });
+        builder.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<SelfCheckoutSession>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}

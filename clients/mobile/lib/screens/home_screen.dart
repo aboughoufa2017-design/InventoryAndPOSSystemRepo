@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../auth/auth_repository.dart';
 import '../sync/sync_client.dart';
 import 'inventory_ops_screen.dart';
-import 'login_screen.dart';
 import 'pos_checkout_screen.dart';
 import 'products_screen.dart';
 import 'register_product_screen.dart';
+import 'scan_go_welcome_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,8 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _logout() async {
     await context.read<AuthRepository>().logout();
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const ScanGoWelcomeScreen()),
+      (_) => false,
     );
   }
 
@@ -51,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Warehouse'),
+        title: const Text('Modern Tech'),
         actions: [
           IconButton(
             tooltip: 'Sign out',
@@ -127,7 +128,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               },
-              child: const Text('POS checkout (offline)'),
+              child: const Text('POS checkout + Scan & Go receive'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ScanGoWelcomeScreen(),
+                  ),
+                );
+              },
+              child: const Text('Customer Scan & Go'),
             ),
           ],
         ),

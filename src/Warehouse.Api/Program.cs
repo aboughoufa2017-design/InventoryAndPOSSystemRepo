@@ -153,6 +153,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     app.MapPurchasingEndpoints();
     app.MapSalesEndpoints();
     app.MapPosEndpoints();
+    app.MapSelfCheckoutEndpoints();
     app.MapSyncEndpoints();
     app.MapPlatformEndpoints();
     app.MapStockCountEndpoints();

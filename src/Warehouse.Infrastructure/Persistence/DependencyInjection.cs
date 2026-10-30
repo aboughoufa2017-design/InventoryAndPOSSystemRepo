@@ -118,6 +118,7 @@ public static class DependencyInjection
         services.AddScoped<IPosConflictService, PosConflictService>();
         services.AddScoped<IPosPricingService, PosPricingService>();
         services.AddScoped<IRestaurantPosService, RestaurantPosService>();
+        services.AddScoped<ISelfCheckoutService, SelfCheckoutService>();
         services.AddScoped<IChangeLogWriter, ChangeLogWriter>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ISyncOperationHandler, ProductUpsertSyncHandler>();

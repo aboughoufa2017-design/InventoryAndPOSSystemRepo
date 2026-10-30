@@ -125,6 +125,10 @@ public sealed class WarehouseDbContext : DbContext
 
     public DbSet<RestaurantOpenOrder> RestaurantOpenOrders => Set<RestaurantOpenOrder>();
 
+    public DbSet<SelfCheckoutSession> SelfCheckoutSessions => Set<SelfCheckoutSession>();
+
+    public DbSet<SelfCheckoutLine> SelfCheckoutLines => Set<SelfCheckoutLine>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<ProcessedSyncOperation> ProcessedSyncOperations => Set<ProcessedSyncOperation>();

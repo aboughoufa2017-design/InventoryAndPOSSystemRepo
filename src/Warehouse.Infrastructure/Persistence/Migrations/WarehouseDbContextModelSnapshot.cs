@@ -2195,6 +2195,172 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.ToTable("restaurant_tables", (string)null);
                 });
 
+            modelBuilder.Entity("Warehouse.Domain.Pos.SelfCheckoutLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BarcodeSnapshot")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("barcode_snapshot");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("line_total");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name_snapshot");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("SkuSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sku_snapshot");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id")
+                        .HasName("pk_self_checkout_lines");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_self_checkout_lines_session_id");
+
+                    b.HasIndex("TenantId", "SessionId")
+                        .HasDatabaseName("ix_self_checkout_lines_tenant_id_session_id");
+
+                    b.ToTable("self_checkout_lines", (string)null);
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Pos.SelfCheckoutSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("access_token");
+
+                    b.Property<bool>("AuditCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("audit_completed");
+
+                    b.Property<int>("AuditItemCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("audit_item_count");
+
+                    b.Property<bool>("AuditRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("audit_required");
+
+                    b.Property<string>("AuditTargetBarcodesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("audit_target_barcodes_json");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("grand_total");
+
+                    b.Property<bool>("IsGuest")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_guest");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("subtotal");
+
+                    b.Property<decimal>("TaxTotal")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("tax_total");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_self_checkout_sessions");
+
+                    b.HasIndex("AccessToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_self_checkout_sessions_access_token");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_self_checkout_sessions_tenant_id_code");
+
+                    b.HasIndex("TenantId", "Status", "ExpiresAtUtc")
+                        .HasDatabaseName("ix_self_checkout_sessions_tenant_id_status_expires_at_utc");
+
+                    b.ToTable("self_checkout_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Warehouse.Domain.Purchasing.PurchaseOperation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4493,6 +4659,33 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_restaurant_tables_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Pos.SelfCheckoutLine", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Pos.SelfCheckoutSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_self_checkout_lines_self_checkout_sessions_session_id");
+
+                    b.HasOne("Warehouse.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_self_checkout_lines_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Warehouse.Domain.Pos.SelfCheckoutSession", b =>
+                {
+                    b.HasOne("Warehouse.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_self_checkout_sessions_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Warehouse.Domain.Purchasing.PurchaseOperation", b =>
