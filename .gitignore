@@ -26,3 +26,8 @@ build/
 
 *.log
 logs/
+
+backups/
+*.dump
+!deploy/seed/
+!deploy/seed/**

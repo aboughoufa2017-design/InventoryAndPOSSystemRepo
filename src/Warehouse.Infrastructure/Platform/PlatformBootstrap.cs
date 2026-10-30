@@ -33,19 +33,31 @@ public static class PlatformBootstrap
         try
         {
             var environment = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>();
+            var configuration = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
             var db = scope.ServiceProvider.GetRequiredService<WarehouseDbContext>();
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
             var options = scope.ServiceProvider.GetRequiredService<IOptions<PlatformOptions>>().Value;
 
-            if (environment.IsProduction())
+            var restored = await StartupDatabaseRestore.TryRestoreIfEmptyAsync(
+                configuration,
+                logger,
+                cancellationToken);
+
+            var migrateOnStart = string.Equals(
+                configuration["WAREHOUSE_MIGRATE_ON_START"],
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+
+            if (environment.IsProduction() && !restored && !migrateOnStart)
             {
-                // Production migrations run via the dedicated migrate job / script — not on every API start.
+                // Production migrations normally run via migrate job — unless we just restored seed
+                // data or WAREHOUSE_MIGRATE_ON_START=true (Render free tier).
                 if (!await db.Database.CanConnectAsync(cancellationToken))
                 {
                     throw new InvalidOperationException("Cannot connect to the database.");
                 }
 
-                logger.LogInformation("Production bootstrap: skipping MigrateAsync (use migrate job).");
+                logger.LogInformation("Production bootstrap: skipping MigrateAsync (use migrate job or set WAREHOUSE_MIGRATE_ON_START=true).");
             }
             else
             {

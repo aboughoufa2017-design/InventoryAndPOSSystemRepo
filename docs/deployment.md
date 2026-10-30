@@ -124,6 +124,23 @@ Do not treat these as contractual until at least one restore drill succeeds.
 ./scripts/restore-postgres.sh warehouse-YYYYMMDD.dump
 ```
 
+### Restore local data onto Render Postgres
+
+Use the **External Database URL** from Render → `warehouse-db` → **Connect** (includes `sslmode=require`). Do this while the API is idle or briefly suspended so nothing writes mid-restore.
+
+Windows (PostgreSQL 18 client tools):
+
+```powershell
+# 1) Dump local DB (or skip if you already have a .dump)
+.\scripts\restore-local-to-render.ps1 -DumpOnly
+
+# 2) Restore to Render
+$env:RENDER_DATABASE_URL = 'postgresql://USER:PASSWORD@HOST/DB?sslmode=require'
+.\scripts\restore-local-to-render.ps1 -DumpPath .\backups\warehouse-local-….dump
+```
+
+`pg_restore` uses `--clean --if-exists --no-owner --no-acl` so roles on Render need not match local. After restore, restart **warehouse-api**. Keep dump files out of git (`backups/`, `*.dump`).
+
 ### Redis
 
 Ephemeral. Losing Redis must not lose posted inventory. After Redis loss, restart API; readiness fails until Redis returns.
@@ -171,19 +188,26 @@ VPS Compose + Caddy remains the primary self-hosted path; Render does not replac
    - `GET https://<api>/health/live` → 200
    - `GET https://<api>/health/ready` → 200 (Postgres + Redis)
 
-### Migrations on Render
+### Migrations and local seed restore on Render
 
-Production does **not** auto-migrate. Free Web Services also **do not support** `preDeployCommand`, so the Blueprint does not declare one.
+The API image includes `postgresql-client` and optional seed dump at `/app/seed/warehouse.dump` (from [`deploy/seed/`](../deploy/seed/)).
 
-After the API is up, open **warehouse-api** → **Shell** and run once:
+On start:
 
-```text
-dotnet Warehouse.Api.dll --migrate-only
+1. If the dump file exists and the DB has **no tenants** (or no tables yet), run `pg_restore --clean --if-exists` once.
+2. If `WAREHOUSE_MIGRATE_ON_START=true` (set in the Blueprint / Dockerfile), apply EF migrations.
+
+Later starts skip restore once tenant data exists. To force overwrite (destructive), set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.
+
+Refresh seed from your machine:
+
+```powershell
+$env:PGPASSWORD = 'change-me'
+& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fc -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.dump
+git add deploy/seed/warehouse.dump
 ```
 
-Connection strings are already injected as `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` and `Redis__ConnectionString` from the Blueprint links.
-
-If you upgrade the API plan to `0.5c-512mb` or higher, you can add `preDeployCommand: dotnet Warehouse.Api.dll --migrate-only` under `warehouse-api` in `render.yaml` so migrations run automatically before each deploy.
+Connection strings are injected as `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` and `Redis__ConnectionString` from the Blueprint links.
 
 ### Frontend build notes
 
