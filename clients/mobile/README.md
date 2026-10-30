@@ -20,10 +20,15 @@ Read [../../docs/architecture.md](../../docs/architecture.md), [../../docs/offli
 cd clients/mobile
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
-flutter run --dart-define=API_BASE_URL=http://localhost:3000
+
+# Production / physical device (default API is Render)
+flutter run
+
+# Local API on Android emulator
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5011
 ```
 
-Replace the API base URL with your backend origin (no trailing slash). Default if omitted: `http://localhost:3000`.
+Default `API_BASE_URL`: `https://warehouse-api-0890.onrender.com` (no trailing slash). Tenant login needs **tenant code** (e.g. `123`), email, and password.
 
 ## Layout
 

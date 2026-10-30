@@ -27,13 +27,18 @@ class AuthRepository {
   Future<String?> get accessToken => _storage.read(key: _accessKey);
 
   Future<void> login({
+    required String tenantCode,
     required String email,
     required String password,
   }) async {
     final response = await _http.post(
       _uri('/api/v1/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'tenantCode': tenantCode,
+        'email': email,
+        'password': password,
+      }),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthException(

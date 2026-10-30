@@ -9,9 +9,10 @@ import 'sync/outbox.dart';
 import 'sync/sync_client.dart';
 
 /// API origin, e.g. `https://api.example.com` (no trailing slash).
+/// Override locally: `--dart-define=API_BASE_URL=http://10.0.2.2:5011`
 const String kApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:3000',
+  defaultValue: 'https://warehouse-api-0890.onrender.com',
 );
 
 Future<void> main() async {

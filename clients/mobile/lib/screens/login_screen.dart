@@ -12,6 +12,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _tenantCodeController = TextEditingController(text: '123');
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _busy = false;
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _tenantCodeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -31,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       await context.read<AuthRepository>().login(
+            tenantCode: _tenantCodeController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
@@ -54,6 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            TextField(
+              controller: _tenantCodeController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: 'Tenant code'),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
