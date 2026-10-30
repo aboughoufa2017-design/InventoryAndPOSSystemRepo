@@ -1,14 +1,20 @@
 # Seed dump for first-start restore
 
-Place `warehouse.dump` here (custom format from `pg_dump -Fc`).
+Use **plain SQL** (`warehouse.sql`) so Restore works across Postgres client/server versions.
+Custom `-Fc` dumps from PostgreSQL 18 (`archive version 1.16`) fail with older `pg_restore` in the API image.
 
-On API start, if the Postgres `public` schema is empty and this file exists, the API runs `pg_restore` once, then applies EF migrations.
+On API start, if this file exists and the DB has **no tenants**, the API runs `psql -f warehouse.sql`, then EF migrations.
 
-Refresh the dump from local data:
+Refresh from local data:
 
 ```powershell
 $env:PGPASSWORD = 'change-me'
-& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fc -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.dump
+& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fp --clean --if-exists --no-owner --no-acl `
+  -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.sql
+# Strip PG 18-only psql meta-commands if present:
+(Get-Content deploy/seed/warehouse.sql) |
+  Where-Object { $_ -notmatch '^\\restrict ' -and $_ -notmatch '^\\unrestrict ' } |
+  Set-Content deploy/seed/warehouse.sql
 ```
 
-Force restore over existing data (destructive): set `WAREHOUSE_RESTORE_ON_START=true` on the API service, redeploy once, then remove that env var.
+Force restore over existing data (destructive): set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.

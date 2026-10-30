@@ -190,11 +190,11 @@ VPS Compose + Caddy remains the primary self-hosted path; Render does not replac
 
 ### Migrations and local seed restore on Render
 
-The API image includes `postgresql-client` and optional seed dump at `/app/seed/warehouse.dump` (from [`deploy/seed/`](../deploy/seed/)).
+The API image includes `postgresql-client` and optional seed SQL at `/app/seed/warehouse.sql` (from [`deploy/seed/`](../deploy/seed/)). Plain SQL is used so an older container `psql` can load a dump from a newer local Postgres (custom `-Fc` archives are version-locked).
 
 On start:
 
-1. If the dump file exists and the DB has **no tenants** (or no tables yet), run `pg_restore --clean --if-exists` once.
+1. If the seed file exists and the DB has **no tenants** (or no tables yet), run `psql -f warehouse.sql` once.
 2. If `WAREHOUSE_MIGRATE_ON_START=true` (set in the Blueprint / Dockerfile), apply EF migrations.
 
 Later starts skip restore once tenant data exists. To force overwrite (destructive), set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.
@@ -203,8 +203,9 @@ Refresh seed from your machine:
 
 ```powershell
 $env:PGPASSWORD = 'change-me'
-& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fc -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.dump
-git add deploy/seed/warehouse.dump
+& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -Fp --clean --if-exists --no-owner --no-acl `
+  -h localhost -U warehouse -d warehouse -f deploy/seed/warehouse.sql
+git add deploy/seed/warehouse.sql
 ```
 
 Connection strings are injected as `Database__ConnectionString` / `WAREHOUSE_DB_CONNECTION` and `Redis__ConnectionString` from the Blueprint links.

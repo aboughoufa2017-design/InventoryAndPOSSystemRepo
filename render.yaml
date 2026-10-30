@@ -49,7 +49,7 @@ services:
         sync: false
       # Seed dump in image (/app/seed/warehouse.dump) restores once when DB has no tenants.
       - key: WAREHOUSE_RESTORE_DUMP_PATH
-        value: /app/seed/warehouse.dump
+        value: /app/seed/warehouse.sql
       - key: WAREHOUSE_MIGRATE_ON_START
         value: "true"
       # Set after Static Sites exist (https://warehouse-web-….onrender.com, etc.)

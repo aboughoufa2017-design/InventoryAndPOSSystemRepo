@@ -17,7 +17,7 @@ COPY deploy/seed/ /app/seed/
 RUN chown -R $APP_UID:$APP_UID /app/seed
 USER $APP_UID
 ENV ASPNETCORE_URLS=http://+:8080
-ENV WAREHOUSE_RESTORE_DUMP_PATH=/app/seed/warehouse.dump
+ENV WAREHOUSE_RESTORE_DUMP_PATH=/app/seed/warehouse.sql
 ENV WAREHOUSE_MIGRATE_ON_START=true
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=12 \
