@@ -22,6 +22,5 @@ $env:PGPASSWORD = 'change-me'
 ```
 
 Render Postgres is **16**; local dump may be from **18** — keep the seed as plain SQL and avoid PG18-only `SET`s.
-```
 
 Force restore over existing data (destructive): set `WAREHOUSE_RESTORE_ON_START=true`, redeploy once, then remove it.
