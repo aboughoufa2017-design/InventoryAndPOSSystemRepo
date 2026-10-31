@@ -73,12 +73,12 @@ Staff receipt screen calls:
 
 SMS uses `RESALA_RECEIPT_SMS_TEMPLATE_ID` with four placeholders:
 
-| Placeholder | Content |
-| --- | --- |
-| `$1` | Order code (or order id) |
-| `$2` | Grand total + currency |
-| `$3` | Line items `name×qty=total` (truncated if long) |
-| `$4` | Order time UTC |
+| Placeholder | Content | Max length |
+| --- | --- | --- |
+| `$1` | Order code (or order id) | 20 |
+| `$2` | Grand total + currency | 20 |
+| `$3` | Line items `name×qty` (comma-separated) | 70 |
+| `$4` | Order time UTC (`yyyy-MM-dd HH:mm`) | 20 |
 
 Paste this body in the Resala dashboard (then approve if required):
 
@@ -90,7 +90,11 @@ Paste this body in the Resala dashboard (then approve if required):
 الوقت: $4
 ```
 
-SMS length is limited — very long carts may show `|+N` for remaining lines. Full receipt remains on email / Share.
+Long carts may append `+N` inside `$3` when truncated. Full receipt remains on email / Share.
+
+### WhatsApp
+
+This API sends **SMS via Resala only**. WhatsApp is not wired up. To send receipts on WhatsApp you need a WhatsApp Business channel (Meta Cloud API, or a provider that offers WhatsApp templates in Libya). If Resala adds WhatsApp template send on your account, we can add a parallel channel; until then use SMS + Share / email.
 
 Email uses SMTP (`SmtpSettings` / `SMTP_*`) via MailKit (`SmtpClient.Timeout` ~12s).
 

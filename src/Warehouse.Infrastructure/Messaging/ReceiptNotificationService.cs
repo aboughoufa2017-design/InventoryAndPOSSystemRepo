@@ -49,15 +49,23 @@ public sealed class ReceiptNotificationService(
 
         var culture = CultureInfo.InvariantCulture;
         // Must match the approved Resala template placeholders $1..$4.
+        // Hard limits (Arabic SMS): $1/$2/$4 ≤ 20, $3 ≤ 70.
+        const int shortMax = 20;
+        const int linesMax = 70;
+        var orderLabel = !string.IsNullOrWhiteSpace(details.OrderCode)
+            ? details.OrderCode!
+            : details.OrderId;
+        var totalLabel = $"{details.GrandTotal.ToString("0.00", culture)} {details.CurrencyCode}";
+        // Prefer time without seconds/UTC suffix so it fits in 20 chars: yyyy-MM-dd HH:mm = 16
+        var timeLabel = details.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm", culture);
+
         var record = new Dictionary<string, object?>
         {
             ["phone"] = normalized,
-            ["$1"] = !string.IsNullOrWhiteSpace(details.OrderCode)
-                ? details.OrderCode!
-                : details.OrderId,
-            ["$2"] = $"{details.GrandTotal.ToString("0.00", culture)} {details.CurrencyCode}",
-            ["$3"] = BuildLinesPlaceholder(details, culture),
-            ["$4"] = details.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm", culture) + " UTC",
+            ["$1"] = Truncate(orderLabel, shortMax),
+            ["$2"] = Truncate(totalLabel, shortMax),
+            ["$3"] = BuildLinesPlaceholder(details, culture, linesMax),
+            ["$4"] = Truncate(timeLabel, shortMax),
         };
 
         try
@@ -98,37 +106,39 @@ public sealed class ReceiptNotificationService(
         }
     }
 
-    /// <summary>Line items for template <c>$3</c> (name×qty=lineTotal), truncated for SMS length.</summary>
-    private static string BuildLinesPlaceholder(OrderReceiptDetails details, CultureInfo culture)
+    /// <summary>Line items for template <c>$3</c> (name×qty), hard-capped at <paramref name="maxLen"/>.</summary>
+    private static string BuildLinesPlaceholder(
+        OrderReceiptDetails details,
+        CultureInfo culture,
+        int maxLen)
     {
         if (details.Lines.Count == 0)
         {
-            return "-";
+            return Truncate("-", maxLen);
         }
 
         var sb = new StringBuilder();
         var written = 0;
         foreach (var line in details.Lines)
         {
-            var lineTotal = (line.Quantity * line.UnitPrice).ToString("0.00", culture);
-            var name = line.Name.Length <= 40 ? line.Name : line.Name[..37] + "…";
-            var piece = $"{name}×{line.Quantity.ToString("0.###", culture)}={lineTotal}";
+            // Prefer short pieces so more lines fit in 70 chars.
+            var name = line.Name.Length <= 12 ? line.Name : line.Name[..11] + "…";
+            var piece = $"{name}×{line.Quantity.ToString("0.###", culture)}";
+            var separatorLen = written > 0 ? 1 : 0; // use ',' to save space
 
-            var separatorLen = written > 0 ? 3 : 0;
-            // Arabic SMS is UCS-2 (~70 chars/segment); keep $3 bounded.
-            if (sb.Length + separatorLen + piece.Length > 280)
+            if (sb.Length + separatorLen + piece.Length > maxLen)
             {
                 var remaining = details.Lines.Count - written;
                 if (remaining > 0)
                 {
-                    var suffix = $" | +{remaining}";
-                    if (sb.Length + suffix.Length <= 300)
+                    var suffix = $"+{remaining}";
+                    if (sb.Length + suffix.Length <= maxLen)
                     {
                         sb.Append(suffix);
                     }
-                    else
+                    else if (maxLen > 0)
                     {
-                        sb.Append('…');
+                        return Truncate(sb.ToString(), maxLen);
                     }
                 }
 
@@ -137,13 +147,28 @@ public sealed class ReceiptNotificationService(
 
             if (written > 0)
             {
-                sb.Append(" | ");
+                sb.Append(',');
             }
 
             sb.Append(piece);
             written++;
         }
 
-        return sb.Length == 0 ? "-" : sb.ToString();
+        return Truncate(sb.Length == 0 ? "-" : sb.ToString(), maxLen);
+    }
+
+    private static string Truncate(string value, int maxLen)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLen)
+        {
+            return value;
+        }
+
+        if (maxLen <= 1)
+        {
+            return value[..maxLen];
+        }
+
+        return value[..(maxLen - 1)] + "…";
     }
 }

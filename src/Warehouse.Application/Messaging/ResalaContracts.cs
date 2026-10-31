@@ -18,7 +18,7 @@ public sealed class ResalaOptions
 
     /// <summary>
     /// Approved Resala SMS template id for order receipts.
-    /// Placeholders: <c>$1</c> order, <c>$2</c> total, <c>$3</c> lines, <c>$4</c> time (UTC).
+    /// Placeholders: <c>$1</c> order (≤20), <c>$2</c> total (≤20), <c>$3</c> lines (≤70), <c>$4</c> time (≤20).
     /// </summary>
     public string? ReceiptSmsTemplateId { get; set; }
 }
