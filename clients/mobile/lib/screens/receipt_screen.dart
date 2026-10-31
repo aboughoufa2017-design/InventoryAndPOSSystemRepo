@@ -7,6 +7,7 @@ import '../connectivity/connectivity_controller.dart';
 import '../l10n/locale_controller.dart';
 import '../receipts/local_receipt_store.dart';
 import '../receipts/receipt_api.dart';
+import '../receipts/receipt_share_links.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/offline_banner.dart';
 
@@ -92,6 +93,54 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (_receipt == null) return;
     await _persistContacts();
     await Share.share(_shareBody());
+  }
+
+  Future<void> _shareWhatsApp() async {
+    final s = context.read<LocaleController>().s;
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _status = s.needPhone);
+      return;
+    }
+    if (ReceiptShareLinks.normalizeWhatsAppDigits(phone) == null) {
+      setState(() => _status = s.invalidPhoneForShare);
+      return;
+    }
+    try {
+      await _persistContacts();
+      final ok = await ReceiptShareLinks.openWhatsApp(
+        phone: phone,
+        text: _shareBody(),
+      );
+      if (!mounted) return;
+      setState(() => _status = ok ? s.receiptOpenedInApp : s.cannotOpenWhatsApp);
+    } catch (_) {
+      if (mounted) setState(() => _status = s.cannotOpenWhatsApp);
+    }
+  }
+
+  Future<void> _shareDeviceSms() async {
+    final s = context.read<LocaleController>().s;
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _status = s.needPhone);
+      return;
+    }
+    if (ReceiptShareLinks.normalizeSmsDigits(phone) == null) {
+      setState(() => _status = s.invalidPhoneForShare);
+      return;
+    }
+    try {
+      await _persistContacts();
+      final ok = await ReceiptShareLinks.openSms(
+        phone: phone,
+        text: _shareBody(),
+      );
+      if (!mounted) return;
+      setState(() => _status = ok ? s.receiptOpenedInApp : s.cannotOpenSms);
+    } catch (_) {
+      if (mounted) setState(() => _status = s.cannotOpenSms);
+    }
   }
 
   Future<void> _sendEmail() async {
@@ -254,6 +303,32 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       decoration: InputDecoration(labelText: s.customerEmail),
                     ),
                     const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _sending ? null : _shareWhatsApp,
+                            icon: const Icon(Icons.chat),
+                            label: Text(s.shareViaWhatsApp),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: _sending ? null : _shareDeviceSms,
+                            icon: const Icon(Icons.sms),
+                            label: Text(s.shareViaDeviceSms),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _sending ? null : _share,
+                      icon: const Icon(Icons.share),
+                      label: Text(s.shareReceipt),
+                    ),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: (_sending || !online) ? null : _sendBoth,
                       icon: _sending
@@ -284,12 +359,6 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _sending ? null : _share,
-                      icon: const Icon(Icons.share),
-                      label: Text(s.shareReceipt),
                     ),
                     if (_status != null) ...[
                       const SizedBox(height: 12),

@@ -155,18 +155,28 @@ class AppStrings {
   String get noReceipts =>
       _ar ? 'لا إيصالات بعد. أكمل عملية بيع أولاً.' : 'No receipts yet. Complete a sale first.';
   String get shareReceipt => _ar ? 'مشاركة الإيصال' : 'Share receipt';
+  String get shareViaWhatsApp => _ar ? 'واتساب' : 'WhatsApp';
+  String get shareViaDeviceSms => _ar ? 'رسالة من الجهاز' : 'Device SMS';
   String get customerPhone => _ar ? 'هاتف الزبون (اختياري)' : 'Customer phone (optional)';
   String get customerEmail => _ar ? 'بريد الزبون (اختياري)' : 'Customer email (optional)';
   String get orderCodeLabel => _ar ? 'رمز الطلب' : 'Order code';
   String get receiptSaved => _ar ? 'تم حفظ الإيصال' : 'Receipt saved';
   String get backToPos => _ar ? 'العودة لنقطة البيع' : 'Back to POS';
   String get sendEmail => _ar ? 'إرسال بالبريد' : 'Send email';
-  String get sendSms => _ar ? 'إرسال برسالة نصية' : 'Send SMS';
+  String get sendSms => _ar ? 'رسالة نصية (ريزالا)' : 'SMS (Resala)';
   String get sendEmailAndSms => _ar ? 'إرسال بريد ورسالة' : 'Send email & SMS';
   String get needEmailOrPhone =>
       _ar ? 'أدخل هاتف الزبون أو بريده' : 'Enter customer phone or email';
   String get needEmail => _ar ? 'أدخل بريد الزبون' : 'Enter customer email';
   String get needPhone => _ar ? 'أدخل هاتف الزبون' : 'Enter customer phone';
+  String get invalidPhoneForShare =>
+      _ar ? 'رقم الهاتف غير صالح للمشاركة' : 'Phone number is not valid for sharing';
+  String get cannotOpenWhatsApp =>
+      _ar ? 'تعذر فتح واتساب على هذا الجهاز' : 'Could not open WhatsApp on this device';
+  String get cannotOpenSms =>
+      _ar ? 'تعذر فتح تطبيق الرسائل على هذا الجهاز' : 'Could not open the SMS app on this device';
+  String get receiptOpenedInApp =>
+      _ar ? 'افتح التطبيق وأكمل الإرسال' : 'Finish sending in the opened app';
   String get receiptSentOk => _ar ? 'تم إرسال تفاصيل الطلب' : 'Order details sent';
   String get receiptSentPartial =>
       _ar ? 'أُرسل جزئياً — راجع الرسالة' : 'Partially sent — see message';
