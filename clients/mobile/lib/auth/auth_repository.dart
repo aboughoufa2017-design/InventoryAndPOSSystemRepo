@@ -81,7 +81,6 @@ class AuthRepository {
     }
 
     if (!isOnline) {
-      // Offline staff shell: allow local cache / outbox with stored session.
       return true;
     }
 
@@ -91,7 +90,6 @@ class AuthRepository {
         return true;
       } catch (_) {
         if (hasAccess) {
-          // Keep access token; may still be valid.
           return true;
         }
         await logout();
@@ -104,7 +102,7 @@ class AuthRepository {
 
   Future<void> login({
     required String tenantCode,
-    required String email,
+    required String emailOrPhone,
     required String password,
   }) async {
     final deviceKey = await getOrCreateDeviceKey();
@@ -113,7 +111,8 @@ class AuthRepository {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'tenantCode': tenantCode,
-        'email': email,
+        'emailOrPhone': emailOrPhone,
+        'email': emailOrPhone,
         'password': password,
         'deviceKey': deviceKey,
         'deviceName': _deviceName,
@@ -129,8 +128,44 @@ class AuthRepository {
     await _persistTokens(data);
     await _persistProfile(
       tenantCode: tenantCode.trim(),
-      email: email.trim(),
+      emailOrPhone: emailOrPhone.trim(),
       displayName: (data['displayName'] ?? data['DisplayName'])?.toString(),
+    );
+  }
+
+  Future<void> registerStaff({
+    required String tenantCode,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String displayName,
+  }) async {
+    final deviceKey = await getOrCreateDeviceKey();
+    final response = await _http.post(
+      _uri('/api/v1/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'tenantCode': tenantCode,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'password': password,
+        'displayName': displayName,
+        'deviceKey': deviceKey,
+        'deviceName': _deviceName,
+        'applicationVersion': '1.0.0+1',
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(
+        'Register failed (${response.statusCode}): ${response.body}',
+      );
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    await _persistTokens(data);
+    await _persistProfile(
+      tenantCode: tenantCode.trim(),
+      emailOrPhone: email.trim(),
+      displayName: (data['displayName'] ?? data['DisplayName'])?.toString() ?? displayName,
     );
   }
 
@@ -170,11 +205,11 @@ class AuthRepository {
 
   Future<void> _persistProfile({
     required String tenantCode,
-    required String email,
+    required String emailOrPhone,
     String? displayName,
   }) async {
     await _storage.write(key: _tenantKey, value: tenantCode);
-    await _storage.write(key: _emailKey, value: email);
+    await _storage.write(key: _emailKey, value: emailOrPhone);
     if (displayName != null && displayName.isNotEmpty) {
       await _storage.write(key: _displayNameKey, value: displayName);
     }

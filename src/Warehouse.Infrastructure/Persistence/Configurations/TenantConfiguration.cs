@@ -18,6 +18,7 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(x => x.NegativeStockPolicy).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(x => x.TaxName).HasMaxLength(128);
         builder.Property(x => x.TaxRate).HasPrecision(9, 6);
+        builder.Property(x => x.AllowStaffSelfRegistration).IsRequired().HasDefaultValue(true);
         builder.Property(x => x.CreatedAtUtc).IsRequired();
         builder.Property(x => x.UpdatedAtUtc).IsRequired();
         builder.Property(x => x.RowVersion).IsRequired().IsConcurrencyToken();

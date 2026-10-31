@@ -8,6 +8,7 @@ import 'catalog/catalog_api.dart';
 import 'connectivity/connectivity_controller.dart';
 import 'db/app_database.dart';
 import 'l10n/locale_controller.dart';
+import 'receipts/local_receipt_store.dart';
 import 'scan_go/self_checkout_api.dart';
 import 'screens/home_screen.dart';
 import 'screens/scan_go_welcome_screen.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
   final session = SessionController(auth);
   await auth.ensureSession(isOnline: connectivity.isOnline);
   await session.hydrate();
+  final receipts = LocalReceiptStore();
 
   runApp(
     MultiProvider(
@@ -56,6 +58,7 @@ Future<void> main() async {
         Provider<SyncClient>.value(value: sync),
         Provider<SelfCheckoutApi>.value(value: selfCheckout),
         Provider<CatalogApi>.value(value: catalog),
+        Provider<LocalReceiptStore>.value(value: receipts),
         ChangeNotifierProvider<LocaleController>.value(value: locale),
         ChangeNotifierProvider<ConnectivityController>.value(value: connectivity),
         ChangeNotifierProvider<SessionController>.value(value: session),

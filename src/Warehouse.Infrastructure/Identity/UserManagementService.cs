@@ -73,6 +73,12 @@ public sealed class UserManagementService(
             return AppResult<UserResponse>.Failure(ErrorCodes.InvalidOperation, "Email already exists.");
         }
 
+        var phone = User.NormalizePhone(command.PhoneNumber);
+        if (phone is not null && await db.Users.AnyAsync(u => u.PhoneNumber == phone, cancellationToken))
+        {
+            return AppResult<UserResponse>.Failure(ErrorCodes.InvalidOperation, "Phone number already exists.");
+        }
+
         var roles = await db.Roles
             .Where(r => command.RoleIds.Contains(r.Id) && r.IsActive)
             .ToListAsync(cancellationToken);
@@ -89,7 +95,8 @@ public sealed class UserManagementService(
             email,
             passwordHasher.HashPassword(command.Password),
             command.DisplayName,
-            utcNow);
+            utcNow,
+            phone);
 
         db.Users.Add(user);
         foreach (var role in roles)
@@ -318,6 +325,7 @@ public sealed class UserManagementService(
         return users.Select(u => new UserResponse(
             u.Id,
             u.Email,
+            u.PhoneNumber,
             u.DisplayName,
             u.IsActive,
             u.IsDisabled,

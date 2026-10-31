@@ -17,6 +17,7 @@ public sealed record UserRoleSummary(Guid RoleId, string RoleCode, string RoleNa
 public sealed record UserResponse(
     Guid Id,
     string Email,
+    string? PhoneNumber,
     string DisplayName,
     bool IsActive,
     bool IsDisabled,
@@ -29,7 +30,8 @@ public sealed record CreateUserCommand(
     string Email,
     string Password,
     string DisplayName,
-    IReadOnlyList<Guid> RoleIds);
+    IReadOnlyList<Guid> RoleIds,
+    string? PhoneNumber = null);
 
 public sealed record UpdateUserCommand(
     Guid UserId,

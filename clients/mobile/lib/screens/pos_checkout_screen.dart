@@ -9,8 +9,10 @@ import '../db/app_database.dart';
 import '../l10n/locale_controller.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../sync/outbox.dart';
+import '../receipts/local_receipt_store.dart';
 import '../widgets/barcode_scanner_sheet.dart';
 import '../widgets/offline_banner.dart';
+import 'receipt_screen.dart';
 
 /// Staff POS: offline cart, Scan & Go order-QR import, optional random audit, then pay.
 class PosCheckoutScreen extends StatefulWidget {
@@ -232,7 +234,25 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
     final outbox = context.read<Outbox>();
     final selfCheckout = context.read<SelfCheckoutApi>();
+    final receipts = context.read<LocalReceiptStore>();
     final importedId = _imported?.id;
+    final orderCode = _imported?.code;
+    final currency = _imported?.currencyCode ?? 'LYD';
+    final lineSnapshots = _lines
+        .map(
+          (l) => LocalReceiptLine(
+            productId: l.productId,
+            sku: l.sku,
+            name: l.name,
+            barcode: l.barcode,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+          ),
+        )
+        .toList();
+    final grandTotal =
+        _lines.fold<double>(0, (sum, l) => sum + l.quantity * l.unitPrice);
+
     await outbox.enqueue(
       opType: 'PosSale:Finalize',
       payloadJson: jsonEncode({
@@ -241,6 +261,19 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         'entityType': 'PosSale',
         'operationType': 'Finalize',
       }),
+    );
+
+    await receipts.insert(
+      LocalReceipt(
+        id: commandId,
+        createdAt: DateTime.now().toUtc(),
+        orderCode: orderCode,
+        warehouseId: warehouseId,
+        currencyCode: currency,
+        grandTotal: grandTotal,
+        lines: lineSnapshots,
+        notes: payload['notes']?.toString(),
+      ),
     );
 
     if (importedId != null) {
@@ -254,8 +287,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       _lines.clear();
       _imported = null;
       _orderCodeCtrl.clear();
-      _message = commandId;
+      _message = s.receiptSaved;
     });
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReceiptScreen(receiptId: commandId, popToPos: true),
+      ),
+    );
   }
 
   @override

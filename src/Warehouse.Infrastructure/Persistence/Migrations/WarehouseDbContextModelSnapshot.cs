@@ -860,6 +860,11 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone_number");
+
                     b.Property<int>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("integer")
@@ -885,6 +890,11 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "IsActive")
                         .HasDatabaseName("ix_users_tenant_id_is_active");
+
+                    b.HasIndex("TenantId", "PhoneNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_tenant_id_phone_number")
+                        .HasFilter("phone_number IS NOT NULL");
 
                     b.ToTable("users", (string)null);
                 });
@@ -3851,6 +3861,12 @@ namespace Warehouse.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean")
                         .HasColumnName("is_suspended");
+
+                    b.Property<bool>("AllowStaffSelfRegistration")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("allow_staff_self_registration");
 
                     b.Property<int?>("MaxOfflineDays")
                         .HasColumnType("integer")

@@ -48,6 +48,11 @@ public sealed class Tenant : Entity
 
     public bool RequireOnlineRevalidation { get; private set; }
 
+    /// <summary>
+    /// When true, staff may self-register via mobile/API with a valid tenant code.
+    /// </summary>
+    public bool AllowStaffSelfRegistration { get; private set; } = true;
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public DateTimeOffset UpdatedAtUtc { get; private set; }
@@ -80,9 +85,16 @@ public sealed class Tenant : Entity
             TimeZoneId = timeZoneId.Trim(),
             TaxEnabled = false,
             MaxOfflineDays = Security.OfflineSessionPolicy.DefaultMaxOfflineDays,
+            AllowStaffSelfRegistration = true,
             CreatedAtUtc = utcNow,
             UpdatedAtUtc = utcNow,
         };
+    }
+
+    public void SetAllowStaffSelfRegistration(bool allow, DateTimeOffset utcNow)
+    {
+        AllowStaffSelfRegistration = allow;
+        Touch(utcNow);
     }
 
     public void UpdateProfile(string name, string currencyCode, string timeZoneId, DateTimeOffset utcNow)

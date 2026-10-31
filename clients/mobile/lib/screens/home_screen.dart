@@ -9,6 +9,7 @@ import '../sync/sync_client.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/offline_banner.dart';
 import 'inventory_ops_screen.dart';
+import 'order_history_screen.dart';
 import 'pos_checkout_screen.dart';
 import 'products_screen.dart';
 import 'register_product_screen.dart';
@@ -153,6 +154,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.point_of_sale_outlined,
             title: s.posCheckout,
             onTap: () => _open(const PosCheckoutScreen()),
+          ),
+          _StaffTile(
+            icon: Icons.receipt_long_outlined,
+            title: s.orderHistory,
+            onTap: () => _open(const OrderHistoryScreen()),
           ),
           _StaffTile(
             icon: Icons.inventory_2_outlined,

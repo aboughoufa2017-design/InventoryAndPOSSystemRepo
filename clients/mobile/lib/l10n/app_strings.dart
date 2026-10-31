@@ -148,4 +148,39 @@ class AppStrings {
       _ar ? 'جاري تحميل المستودعات…' : 'Loading warehouses…';
   String get noWarehouses =>
       _ar ? 'لا مستودعات. أنشئ مستودعاً من لوحة الويب.' : 'No warehouses. Create one on the web dashboard.';
+
+  // Receipts
+  String get receipt => _ar ? 'الإيصال' : 'Receipt';
+  String get orderHistory => _ar ? 'سجل الطلبات' : 'Order history';
+  String get noReceipts =>
+      _ar ? 'لا إيصالات بعد. أكمل عملية بيع أولاً.' : 'No receipts yet. Complete a sale first.';
+  String get shareReceipt => _ar ? 'مشاركة الإيصال' : 'Share receipt';
+  String get customerPhone => _ar ? 'هاتف الزبون (اختياري)' : 'Customer phone (optional)';
+  String get customerEmail => _ar ? 'بريد الزبون (اختياري)' : 'Customer email (optional)';
+  String get orderCodeLabel => _ar ? 'رمز الطلب' : 'Order code';
+  String get receiptSaved => _ar ? 'تم حفظ الإيصال' : 'Receipt saved';
+  String get backToPos => _ar ? 'العودة لنقطة البيع' : 'Back to POS';
+
+  // Auth register + biometrics
+  String get emailOrPhone => _ar ? 'البريد أو رقم الهاتف' : 'Email or phone';
+  String get phone => _ar ? 'رقم الهاتف' : 'Phone number';
+  String get displayName => _ar ? 'الاسم المعروض' : 'Display name';
+  String get confirmPassword => _ar ? 'تأكيد كلمة المرور' : 'Confirm password';
+  String get createAccount => _ar ? 'إنشاء حساب موظف' : 'Create staff account';
+  String get registerStaff => _ar ? 'تسجيل موظف جديد' : 'Register staff';
+  String get haveAccountSignIn => _ar ? 'لديك حساب؟ سجّل الدخول' : 'Have an account? Sign in';
+  String get passwordsMismatch =>
+      _ar ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match';
+  String get saveWithBiometrics =>
+      _ar ? 'حفظ الدخول ببصمة الوجه / الإصبع؟' : 'Save sign-in with Face ID / fingerprint?';
+  String get saveBiometricsYes => _ar ? 'حفظ' : 'Save';
+  String get saveBiometricsNo => _ar ? 'لاحقاً' : 'Not now';
+  String get signInWithBiometrics =>
+      _ar ? 'دخول بالبصمة' : 'Sign in with biometrics';
+  String get forgetSavedPassword =>
+      _ar ? 'نسيان كلمة المرور المحفوظة' : 'Forget saved password';
+  String get biometricsFailed =>
+      _ar ? 'تعذّر التحقق بالبصمة' : 'Biometric unlock failed';
+  String get biometricsUnavailable =>
+      _ar ? 'البصمة غير متاحة على هذا الجهاز' : 'Biometrics unavailable on this device';
 }

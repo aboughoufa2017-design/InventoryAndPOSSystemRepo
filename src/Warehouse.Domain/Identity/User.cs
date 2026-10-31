@@ -18,6 +18,11 @@ public sealed class User : TenantOwnedEntity
 
     public string Email { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// Normalized phone digits (optional). Unique per tenant when set.
+    /// </summary>
+    public string? PhoneNumber { get; private set; }
+
     public string PasswordHash { get; private set; } = string.Empty;
 
     public string DisplayName { get; private set; } = string.Empty;
@@ -38,7 +43,8 @@ public sealed class User : TenantOwnedEntity
         string email,
         string passwordHash,
         string displayName,
-        DateTimeOffset utcNow)
+        DateTimeOffset utcNow,
+        string? phoneNumber = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
@@ -47,11 +53,30 @@ public sealed class User : TenantOwnedEntity
         return new User(id, tenantId)
         {
             Email = email.Trim().ToLowerInvariant(),
+            PhoneNumber = NormalizePhone(phoneNumber),
             PasswordHash = passwordHash,
             DisplayName = displayName.Trim(),
             CreatedAtUtc = utcNow,
             UpdatedAtUtc = utcNow,
         };
+    }
+
+    public void SetPhoneNumber(string? phoneNumber, DateTimeOffset utcNow)
+    {
+        PhoneNumber = NormalizePhone(phoneNumber);
+        UpdatedAtUtc = utcNow;
+        RowVersion++;
+    }
+
+    public static string? NormalizePhone(string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+        return digits.Length == 0 ? null : digits;
     }
 
     public void Disable(DateTimeOffset utcNow)

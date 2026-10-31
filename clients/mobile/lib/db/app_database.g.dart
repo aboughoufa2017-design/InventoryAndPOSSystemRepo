@@ -1,7 +1,6 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
+﻿// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'app_database.dart';
-
 // ignore_for_file: type=lint
 class $OutboxOpsTable extends OutboxOps
     with TableInfo<$OutboxOpsTable, OutboxOp> {
@@ -1659,3 +1658,4 @@ class $AppDatabaseManager {
   $$BalancesCacheTableTableManager get balancesCache =>
       $$BalancesCacheTableTableManager(_db, _db.balancesCache);
 }
+

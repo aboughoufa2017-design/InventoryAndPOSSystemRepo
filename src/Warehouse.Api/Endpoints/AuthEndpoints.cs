@@ -23,6 +23,15 @@ public static class AuthEndpoints
             .Produces<ApiErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ApiErrorResponse>(StatusCodes.Status400BadRequest);
 
+        group.MapPost("/register", RegisterStaffAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(Hosting.ProductionHardeningExtensions.AuthRateLimitPolicy)
+            .WithName("RegisterStaff")
+            .Produces<AuthTokenResponse>(StatusCodes.Status200OK)
+            .Produces<ApiErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ApiErrorResponse>(StatusCodes.Status403Forbidden)
+            .Produces<ApiErrorResponse>(StatusCodes.Status404NotFound);
+
         group.MapPost("/refresh", RefreshAsync)
             .AllowAnonymous()
             .RequireRateLimiting(Hosting.ProductionHardeningExtensions.AuthRateLimitPolicy)
@@ -51,11 +60,33 @@ public static class AuthEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
+        var identifier = request.EmailOrPhone ?? request.Email;
         var result = await auth.LoginAsync(
             new LoginCommand(
                 request.TenantCode,
-                request.Email,
+                identifier ?? string.Empty,
                 request.Password,
+                request.DeviceKey,
+                request.DeviceName,
+                request.ApplicationVersion),
+            cancellationToken);
+
+        return ToHttp(result, httpContext);
+    }
+
+    private static async Task<IResult> RegisterStaffAsync(
+        StaffRegisterRequest request,
+        IAuthenticationService auth,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var result = await auth.RegisterStaffAsync(
+            new StaffRegisterCommand(
+                request.TenantCode,
+                request.Email,
+                request.PhoneNumber,
+                request.Password,
+                request.DisplayName,
                 request.DeviceKey,
                 request.DeviceName,
                 request.ApplicationVersion),
@@ -126,8 +157,19 @@ public static class AuthEndpoints
 
     public sealed record LoginRequest(
         string TenantCode,
-        string Email,
+        string? Email,
+        string? EmailOrPhone,
         string Password,
+        string? DeviceKey,
+        string? DeviceName,
+        string? ApplicationVersion);
+
+    public sealed record StaffRegisterRequest(
+        string TenantCode,
+        string Email,
+        string PhoneNumber,
+        string Password,
+        string DisplayName,
         string? DeviceKey,
         string? DeviceName,
         string? ApplicationVersion);
@@ -273,7 +315,12 @@ public static class IdentityEndpoints
         CancellationToken cancellationToken) =>
         ToHttp(
             await users.CreateUserAsync(
-                new CreateUserCommand(request.Email, request.Password, request.DisplayName, request.RoleIds),
+                new CreateUserCommand(
+                    request.Email,
+                    request.Password,
+                    request.DisplayName,
+                    request.RoleIds,
+                    request.PhoneNumber),
                 cancellationToken),
             http);
 
@@ -342,7 +389,8 @@ public static class IdentityEndpoints
         string Email,
         string Password,
         string DisplayName,
-        IReadOnlyList<Guid> RoleIds);
+        IReadOnlyList<Guid> RoleIds,
+        string? PhoneNumber = null);
 
     public sealed record UpdateUserRequest(
         string DisplayName,

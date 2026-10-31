@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera is used to scan product barcodes for POS checkout and registering new items.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID unlocks your saved staff sign-in on this device.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

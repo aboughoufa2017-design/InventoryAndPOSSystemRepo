@@ -25,14 +25,16 @@ public sealed class AuthenticationService(
     public async Task<AppResult<AuthTokenResponse>> LoginAsync(LoginCommand command, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command.TenantCode)
-            || string.IsNullOrWhiteSpace(command.Email)
+            || string.IsNullOrWhiteSpace(command.EmailOrPhone)
             || string.IsNullOrWhiteSpace(command.Password))
         {
-            return AppResult<AuthTokenResponse>.Failure(ErrorCodes.ValidationFailed, "Tenant code, email, and password are required.");
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.ValidationFailed,
+                "Tenant code, email or phone, and password are required.");
         }
 
         var tenantCode = command.TenantCode.Trim().ToUpperInvariant();
-        var email = command.Email.Trim().ToLowerInvariant();
+        var identifier = command.EmailOrPhone.Trim();
         var utcNow = DateTimeOffset.UtcNow;
 
         var tenant = await db.Tenants
@@ -51,8 +53,7 @@ public sealed class AuthenticationService(
 
         ambientTenantContext.SetTenantScope(tenant.Id);
 
-        var user = await db.Users
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        var user = await FindUserByEmailOrPhoneAsync(identifier, cancellationToken);
 
         if (user is null || !passwordHasher.VerifyHashedPassword(user.PasswordHash, command.Password))
         {
@@ -101,6 +102,148 @@ public sealed class AuthenticationService(
 
         await db.SaveChangesAsync(cancellationToken);
         return AppResult<AuthTokenResponse>.Success(tokens);
+    }
+
+    public async Task<AppResult<AuthTokenResponse>> RegisterStaffAsync(
+        StaffRegisterCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(command.TenantCode)
+            || string.IsNullOrWhiteSpace(command.Email)
+            || string.IsNullOrWhiteSpace(command.PhoneNumber)
+            || string.IsNullOrWhiteSpace(command.Password)
+            || string.IsNullOrWhiteSpace(command.DisplayName))
+        {
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.ValidationFailed,
+                "Tenant code, email, phone, password, and display name are required.");
+        }
+
+        if (command.Password.Trim().Length < 8)
+        {
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.ValidationFailed,
+                "Password must be at least 8 characters.");
+        }
+
+        var phone = User.NormalizePhone(command.PhoneNumber);
+        if (phone is null || phone.Length < 8)
+        {
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.ValidationFailed,
+                "A valid phone number is required.");
+        }
+
+        var tenantCode = command.TenantCode.Trim().ToUpperInvariant();
+        var email = command.Email.Trim().ToLowerInvariant();
+        var utcNow = DateTimeOffset.UtcNow;
+
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Code == tenantCode, cancellationToken);
+        if (tenant is null || !tenant.IsActive)
+        {
+            return AppResult<AuthTokenResponse>.Failure(ErrorCodes.TenantNotFound, "Tenant was not found.");
+        }
+
+        if (tenant.IsSuspended)
+        {
+            return AppResult<AuthTokenResponse>.Failure(ErrorCodes.Forbidden, "Tenant is suspended.");
+        }
+
+        if (!tenant.AllowStaffSelfRegistration)
+        {
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.Forbidden,
+                "Staff self-registration is disabled for this tenant.");
+        }
+
+        ambientTenantContext.SetTenantScope(tenant.Id);
+
+        if (await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
+        {
+            return AppResult<AuthTokenResponse>.Failure(ErrorCodes.InvalidOperation, "Email already exists.");
+        }
+
+        if (await db.Users.AnyAsync(u => u.PhoneNumber == phone, cancellationToken))
+        {
+            return AppResult<AuthTokenResponse>.Failure(ErrorCodes.InvalidOperation, "Phone number already exists.");
+        }
+
+        var cashierRole = await db.Roles
+            .FirstOrDefaultAsync(r => r.Code == SystemRoles.Cashier && r.IsActive, cancellationToken);
+        if (cashierRole is null)
+        {
+            return AppResult<AuthTokenResponse>.Failure(
+                ErrorCodes.InternalError,
+                "Cashier role is missing for this tenant.");
+        }
+
+        var user = User.Create(
+            Guid.NewGuid(),
+            tenant.Id,
+            email,
+            passwordHasher.HashPassword(command.Password),
+            command.DisplayName,
+            utcNow,
+            phone);
+
+        db.Users.Add(user);
+        db.UserRoles.Add(UserRole.Create(Guid.NewGuid(), tenant.Id, user.Id, cashierRole.Id, utcNow));
+        await db.SaveChangesAsync(cancellationToken);
+
+        Device? device = null;
+        if (!string.IsNullOrWhiteSpace(command.DeviceKey))
+        {
+            var deviceResult = await ResolveDeviceForLoginAsync(
+                tenant.Id,
+                user.Id,
+                command.DeviceKey,
+                command.DeviceName,
+                command.ApplicationVersion,
+                utcNow,
+                cancellationToken);
+            if (!deviceResult.IsSuccess)
+            {
+                return AppResult<AuthTokenResponse>.Failure(deviceResult.ErrorCode!, deviceResult.ErrorMessage!);
+            }
+
+            device = deviceResult.Value;
+        }
+
+        var (permissions, roles) = await LoadPermissionsAndRolesAsync(user.Id, cancellationToken);
+        var tokens = await IssueTokensAsync(tenant.Id, user, device?.Id, permissions, roles, utcNow, cancellationToken);
+
+        db.AuditLogs.Add(AuditLog.Create(
+            Guid.NewGuid(),
+            tenant.Id,
+            user.Id,
+            device?.Id,
+            "auth.register",
+            nameof(User),
+            user.Id,
+            utcNow,
+            correlationId: null,
+            ipAddress: null,
+            metadataJson: null));
+
+        await db.SaveChangesAsync(cancellationToken);
+        return AppResult<AuthTokenResponse>.Success(tokens);
+    }
+
+    private async Task<User?> FindUserByEmailOrPhoneAsync(string identifier, CancellationToken cancellationToken)
+    {
+        if (identifier.Contains('@', StringComparison.Ordinal))
+        {
+            var email = identifier.ToLowerInvariant();
+            return await db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        }
+
+        var phone = User.NormalizePhone(identifier);
+        if (phone is null)
+        {
+            return null;
+        }
+
+        return await db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone, cancellationToken);
     }
 
     public async Task<AppResult<AuthTokenResponse>> RefreshAsync(RefreshCommand command, CancellationToken cancellationToken)
@@ -205,6 +348,7 @@ public sealed class AuthenticationService(
             user.Id,
             tenant.Id,
             user.Email,
+            user.PhoneNumber,
             user.DisplayName,
             existing.DeviceId,
             permissions,
@@ -268,6 +412,7 @@ public sealed class AuthenticationService(
             user.Id,
             user.TenantId,
             user.Email,
+            user.PhoneNumber,
             user.DisplayName,
             ambientTenantContext.DeviceId,
             user.IsActive && !user.IsDisabled,
@@ -378,6 +523,7 @@ public sealed class AuthenticationService(
             user.Id,
             tenantId,
             user.Email,
+            user.PhoneNumber,
             user.DisplayName,
             deviceId,
             permissions,
