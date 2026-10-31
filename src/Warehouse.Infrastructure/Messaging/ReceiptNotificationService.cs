@@ -48,21 +48,13 @@ public sealed class ReceiptNotificationService(
         }
 
         var culture = CultureInfo.InvariantCulture;
-        var summary = BuildSmsSummary(details, culture);
-        var total = $"{details.GrandTotal.ToString("0.00", culture)} {details.CurrencyCode}";
-
-        // Template placeholders: $1 = order id, $2 = total, $3 = line summary
+        // Resala receipt template uses a single placeholder, e.g.:
+        // "اهلا بك هده تفاصيل الفاتوة $1"
         var record = new Dictionary<string, object?>
         {
             ["phone"] = normalized,
-            ["$1"] = details.OrderId,
-            ["$2"] = total,
-            ["$3"] = summary,
+            ["$1"] = BuildReceiptPlaceholder(details, culture),
         };
-        if (!string.IsNullOrWhiteSpace(details.OrderCode))
-        {
-            record["$4"] = details.OrderCode;
-        }
 
         try
         {
@@ -102,30 +94,37 @@ public sealed class ReceiptNotificationService(
         }
     }
 
-    private static string BuildSmsSummary(OrderReceiptDetails details, CultureInfo culture)
+    /// <summary>Compact invoice text for the template's single <c>$1</c> placeholder.</summary>
+    private static string BuildReceiptPlaceholder(OrderReceiptDetails details, CultureInfo culture)
     {
         var sb = new StringBuilder();
+        var label = !string.IsNullOrWhiteSpace(details.OrderCode)
+            ? details.OrderCode
+            : details.OrderId;
+        sb.Append('#').Append(label)
+            .Append(' ')
+            .Append(details.GrandTotal.ToString("0.00", culture))
+            .Append(' ')
+            .Append(details.CurrencyCode);
+
         var count = 0;
         foreach (var line in details.Lines)
         {
             if (count >= 5)
             {
-                sb.Append("…");
+                sb.Append(" …");
                 break;
             }
 
-            if (count > 0)
-            {
-                sb.Append(" | ");
-            }
-
-            sb.Append(line.Name)
+            sb.Append(" | ")
+                .Append(line.Name)
                 .Append('×')
                 .Append(line.Quantity.ToString("0.###", culture));
             count++;
         }
 
         var text = sb.ToString();
-        return text.Length <= 280 ? text : text[..277] + "…";
+        // Keep well under a single SMS segment budget for the variable part.
+        return text.Length <= 320 ? text : text[..317] + "…";
     }
 }

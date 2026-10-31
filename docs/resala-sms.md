@@ -71,7 +71,8 @@ Staff receipt screen calls:
 
 `POST /send` uses independent per-channel timeouts (email ~15s, SMS ~25s) so a hung SMTP connect does not cancel SMS. Partial success returns `{ emailSent, smsSent, emailError, smsError }`.
 
-SMS uses `RESALA_RECEIPT_SMS_TEMPLATE_ID` with `$1` order id, `$2` total, `$3` lines, `$4` Scan & Go code.
+SMS uses `RESALA_RECEIPT_SMS_TEMPLATE_ID` with a **single** placeholder `$1` = compact invoice text
+(order code/id, total, line summary). Example template body: `اهلا بك هده تفاصيل الفاتوة $1`.
 
 Email uses SMTP (`SmtpSettings` / `SMTP_*`) via MailKit (`SmtpClient.Timeout` ~12s).
 
