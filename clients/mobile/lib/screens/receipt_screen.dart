@@ -3,8 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../connectivity/connectivity_controller.dart';
 import '../l10n/locale_controller.dart';
 import '../receipts/local_receipt_store.dart';
+import '../receipts/receipt_api.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/offline_banner.dart';
 
@@ -27,6 +29,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   bool _loading = true;
+  bool _sending = false;
+  String? _status;
 
   @override
   void initState() {
@@ -52,6 +56,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     });
   }
 
+  Future<void> _persistContacts() async {
+    if (_receipt == null) return;
+    await context.read<LocalReceiptStore>().updateContacts(
+          id: _receipt!.id,
+          customerPhone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+          customerEmail: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+        );
+  }
+
   String _shareBody() {
     final s = context.read<LocaleController>().s;
     final r = _receipt!;
@@ -72,27 +85,126 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     buf
       ..writeln('---')
       ..writeln('${s.total}: ${r.grandTotal.toStringAsFixed(2)} ${r.currencyCode}');
-    final phone = _phoneCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    if (phone.isNotEmpty) buf.writeln('${s.phone}: $phone');
-    if (email.isNotEmpty) buf.writeln('${s.email}: $email');
     return buf.toString();
   }
 
   Future<void> _share() async {
     if (_receipt == null) return;
-    final store = context.read<LocalReceiptStore>();
-    await store.updateContacts(
-      id: _receipt!.id,
-      customerPhone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-      customerEmail: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-    );
+    await _persistContacts();
     await Share.share(_shareBody());
+  }
+
+  Future<void> _sendEmail() async {
+    final s = context.read<LocaleController>().s;
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      setState(() => _status = s.needEmail);
+      return;
+    }
+    if (!context.read<ConnectivityController>().isOnline) {
+      setState(() => _status = s.offlineBanner);
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _status = s.sendingReceipt;
+    });
+    try {
+      await _persistContacts();
+      await context.read<ReceiptApi>().sendEmail(
+            receipt: _receipt!,
+            customerEmail: email,
+          );
+      if (!mounted) return;
+      setState(() => _status = s.receiptSentOk);
+    } catch (e) {
+      if (mounted) setState(() => _status = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _sendSms() async {
+    final s = context.read<LocaleController>().s;
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _status = s.needPhone);
+      return;
+    }
+    if (!context.read<ConnectivityController>().isOnline) {
+      setState(() => _status = s.offlineBanner);
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _status = s.sendingReceipt;
+    });
+    try {
+      await _persistContacts();
+      await context.read<ReceiptApi>().sendSms(
+            receipt: _receipt!,
+            customerPhone: phone,
+          );
+      if (!mounted) return;
+      setState(() => _status = s.receiptSentOk);
+    } catch (e) {
+      if (mounted) setState(() => _status = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _sendBoth() async {
+    final s = context.read<LocaleController>().s;
+    final email = _emailCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+    if (email.isEmpty && phone.isEmpty) {
+      setState(() => _status = s.needEmailOrPhone);
+      return;
+    }
+    if (!context.read<ConnectivityController>().isOnline) {
+      setState(() => _status = s.offlineBanner);
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _status = s.sendingReceipt;
+    });
+    try {
+      await _persistContacts();
+      final result = await context.read<ReceiptApi>().sendBoth(
+            receipt: _receipt!,
+            customerEmail: email.isEmpty ? null : email,
+            customerPhone: phone.isEmpty ? null : phone,
+          );
+      if (!mounted) return;
+      if (result.emailSent && result.smsSent) {
+        setState(() => _status = s.receiptSentOk);
+      } else if (result.emailSent || result.smsSent) {
+        final parts = <String>[
+          s.receiptSentPartial,
+          if (result.emailError != null) result.emailError!,
+          if (result.smsError != null) result.smsError!,
+        ];
+        setState(() => _status = parts.join('\n'));
+      } else {
+        setState(
+          () => _status = [result.emailError, result.smsError]
+              .whereType<String>()
+              .join('\n'),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _status = e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<LocaleController>().s;
+    final online = context.watch<ConnectivityController>().isOnline;
     return OfflineAwareScaffold(
       appBar: AppBar(title: Text(s.receipt)),
       body: _loading
@@ -143,13 +255,49 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: _share,
+                      onPressed: (_sending || !online) ? null : _sendBoth,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.send),
+                      label: Text(s.sendEmailAndSms),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: (_sending || !online) ? null : _sendSms,
+                            icon: const Icon(Icons.sms_outlined),
+                            label: Text(s.sendSms),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: (_sending || !online) ? null : _sendEmail,
+                            icon: const Icon(Icons.email_outlined),
+                            label: Text(s.sendEmail),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _sending ? null : _share,
                       icon: const Icon(Icons.share),
                       label: Text(s.shareReceipt),
                     ),
+                    if (_status != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_status!, textAlign: TextAlign.center),
+                    ],
                     if (widget.popToPos) ...[
                       const SizedBox(height: 8),
-                      OutlinedButton(
+                      TextButton(
                         onPressed: () => Navigator.of(context).pop(),
                         child: Text(s.backToPos),
                       ),

@@ -160,6 +160,17 @@ class AppStrings {
   String get orderCodeLabel => _ar ? 'رمز الطلب' : 'Order code';
   String get receiptSaved => _ar ? 'تم حفظ الإيصال' : 'Receipt saved';
   String get backToPos => _ar ? 'العودة لنقطة البيع' : 'Back to POS';
+  String get sendEmail => _ar ? 'إرسال بالبريد' : 'Send email';
+  String get sendSms => _ar ? 'إرسال برسالة نصية' : 'Send SMS';
+  String get sendEmailAndSms => _ar ? 'إرسال بريد ورسالة' : 'Send email & SMS';
+  String get needEmailOrPhone =>
+      _ar ? 'أدخل هاتف الزبون أو بريده' : 'Enter customer phone or email';
+  String get needEmail => _ar ? 'أدخل بريد الزبون' : 'Enter customer email';
+  String get needPhone => _ar ? 'أدخل هاتف الزبون' : 'Enter customer phone';
+  String get receiptSentOk => _ar ? 'تم إرسال تفاصيل الطلب' : 'Order details sent';
+  String get receiptSentPartial =>
+      _ar ? 'أُرسل جزئياً — راجع الرسالة' : 'Partially sent — see message';
+  String get sendingReceipt => _ar ? 'جاري الإرسال…' : 'Sending…';
 
   // Auth register + biometrics
   String get emailOrPhone => _ar ? 'البريد أو رقم الهاتف' : 'Email or phone';

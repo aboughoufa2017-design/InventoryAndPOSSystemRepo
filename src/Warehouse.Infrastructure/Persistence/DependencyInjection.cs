@@ -10,6 +10,7 @@ using Warehouse.Application.Catalog;
 using Warehouse.Application.Devices;
 using Warehouse.Application.Identity;
 using Warehouse.Application.Inventory;
+using Warehouse.Application.Messaging;
 using Warehouse.Application.Platform;
 using Warehouse.Application.Pos;
 using Warehouse.Application.Purchasing;
@@ -23,6 +24,7 @@ using Warehouse.Infrastructure.Catalog;
 using Warehouse.Infrastructure.Devices;
 using Warehouse.Infrastructure.Identity;
 using Warehouse.Infrastructure.Inventory;
+using Warehouse.Infrastructure.Messaging;
 using Warehouse.Infrastructure.Platform;
 using Warehouse.Infrastructure.Pos;
 using Warehouse.Infrastructure.Purchasing;
@@ -108,6 +110,8 @@ public static class DependencyInjection
         services.Configure<Warehouse.Application.Billing.StripeOptions>(
             configuration.GetSection(Warehouse.Application.Billing.StripeOptions.SectionName));
         services.AddScoped<Warehouse.Application.Billing.IBillingService, Warehouse.Infrastructure.Billing.StripeBillingService>();
+        BindResala(services, configuration);
+        BindSmtpEmail(services, configuration);
         services.AddScoped<ITransferService, TransferService>();
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IPurchasingService, PurchasingService>();
@@ -226,6 +230,102 @@ public static class DependencyInjection
 
         value = parsed;
         return true;
+    }
+
+    private static void BindResala(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ResalaOptions>(configuration.GetSection(ResalaOptions.SectionName));
+        services.PostConfigure<ResalaOptions>(options =>
+        {
+            var key = configuration["RESALA_API_KEY"]
+                      ?? Environment.GetEnvironmentVariable("RESALA_API_KEY")
+                      ?? configuration["Resala:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                options.ApiKey = key.Trim();
+            }
+
+            var baseUrl = configuration["RESALA_BASE_URL"]
+                          ?? Environment.GetEnvironmentVariable("RESALA_BASE_URL")
+                          ?? configuration["Resala:BaseUrl"];
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                options.BaseUrl = baseUrl.Trim().TrimEnd('/');
+            }
+
+            var sender = configuration["RESALA_SENDER"]
+                         ?? Environment.GetEnvironmentVariable("RESALA_SENDER")
+                         ?? configuration["Resala:DefaultSender"];
+            if (!string.IsNullOrWhiteSpace(sender))
+            {
+                options.DefaultSender = sender.Trim();
+            }
+
+            var templateId = configuration["RESALA_RECEIPT_SMS_TEMPLATE_ID"]
+                             ?? Environment.GetEnvironmentVariable("RESALA_RECEIPT_SMS_TEMPLATE_ID")
+                             ?? configuration["Resala:ReceiptSmsTemplateId"];
+            if (!string.IsNullOrWhiteSpace(templateId))
+            {
+                options.ReceiptSmsTemplateId = templateId.Trim();
+            }
+        });
+
+        services.AddHttpClient<IResalaSmsClient, ResalaSmsClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<ResalaOptions>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(opts.BaseUrl)
+                ? "https://dev.resala.ly"
+                : opts.BaseUrl.Trim().TrimEnd('/');
+            client.BaseAddress = new Uri(baseUrl + "/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+    }
+
+    private static void BindSmtpEmail(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.PostConfigure<SmtpSettings>(options =>
+        {
+            ApplyIfPresent(configuration, "SMTP_SERVER", "SmtpSettings:Server", v => options.Server = v);
+            ApplyIfPresent(configuration, "SMTP_SENDER_NAME", "SmtpSettings:SenderName", v => options.SenderName = v);
+            ApplyIfPresent(configuration, "SMTP_SENDER_EMAIL", "SmtpSettings:SenderEmail", v => options.SenderEmail = v);
+            ApplyIfPresent(configuration, "SMTP_USERNAME", "SmtpSettings:Username", v => options.Username = v);
+            ApplyIfPresent(configuration, "SMTP_PASSWORD", "SmtpSettings:Password", v => options.Password = v);
+
+            var portRaw = configuration["SMTP_PORT"]
+                          ?? Environment.GetEnvironmentVariable("SMTP_PORT")
+                          ?? configuration["SmtpSettings:Port"];
+            if (int.TryParse(portRaw, out var port) && port > 0)
+            {
+                options.Port = port;
+            }
+
+            var sslRaw = configuration["SMTP_ENABLE_SSL"]
+                         ?? Environment.GetEnvironmentVariable("SMTP_ENABLE_SSL")
+                         ?? configuration["SmtpSettings:EnableSsl"];
+            if (bool.TryParse(sslRaw, out var ssl))
+            {
+                options.EnableSsl = ssl;
+            }
+        });
+
+        services.AddTransient<IEmailService, EmailService>();
+        services.AddScoped<IReceiptNotificationService, ReceiptNotificationService>();
+    }
+
+    private static void ApplyIfPresent(
+        IConfiguration configuration,
+        string envKey,
+        string configKey,
+        Action<string> apply)
+    {
+        var value = configuration[envKey]
+                    ?? Environment.GetEnvironmentVariable(envKey)
+                    ?? configuration[configKey];
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            apply(value.Trim());
+        }
     }
 
     private static string EnsureSigningKey(string signingKey)

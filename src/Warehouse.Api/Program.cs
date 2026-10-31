@@ -159,6 +159,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     app.MapStockCountEndpoints();
     app.MapReportEndpoints();
     app.MapBillingEndpoints();
+    app.MapReceiptEndpoints();
 
     await Warehouse.Infrastructure.Platform.PlatformBootstrap.EnsureAsync(app.Services);
 }
