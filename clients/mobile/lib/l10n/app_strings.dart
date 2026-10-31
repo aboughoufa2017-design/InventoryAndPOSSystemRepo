@@ -38,6 +38,27 @@ class AppStrings {
   String get handQr =>
       _ar ? 'سلّم هذا الرمز للكاشير لإتمام الدفع' : 'Hand this QR to the cashier to pay';
   String get done => _ar ? 'تم' : 'Done';
+  String get hideQrKeepPending =>
+      _ar ? 'إخفاء (يبقى الرمز محفوظاً)' : 'Hide (QR stays saved)';
+  String get transferQrKeptHint => _ar
+      ? 'الرمز محفوظ على الجهاز حتى يدفع الكاشير. يمكنك إظهاره مرة أخرى من الشاشة الرئيسية.'
+      : 'This QR stays on your phone until the cashier takes payment. You can show it again from the home screen.';
+  String get showSavedQr => _ar ? 'إظهار رمز الدفع المحفوظ' : 'Show saved payment QR';
+  String get startNewShop => _ar ? 'تسوق جديد' : 'Start new shop';
+  String get discardSavedQrConfirm => _ar
+      ? 'حذف الرمز المحفوظ والبدء من جديد؟ لن يمكنك إظهاره مرة أخرى على هذا الجهاز.'
+      : 'Discard the saved QR and start over? You will not be able to show it again on this device.';
+  String get transferPaidThanks =>
+      _ar ? 'تم الدفع — شكراً لتسوقك' : 'Paid — thank you for shopping';
+  String get editOrder => _ar ? 'تعديل الطلب' : 'Edit order';
+  String get increaseQty => _ar ? 'زيادة الكمية' : 'Increase quantity';
+  String get decreaseQty => _ar ? 'تقليل الكمية' : 'Decrease quantity';
+  String get reopenFailed =>
+      _ar ? 'تعذر إعادة فتح الطلب للتعديل' : 'Could not reopen the order for editing';
+  String get waitingCustomers => _ar ? 'زبائن بانتظار الدفع' : 'Waiting customers';
+  String get emptyWaitingList =>
+      _ar ? 'لا زبائن بانتظار الدفع حالياً' : 'No customers waiting right now';
+  String get refreshWaiting => _ar ? 'تحديث القائمة' : 'Refresh list';
   String get cartEmptyHint =>
       _ar ? 'ابدأ بمسح منتج من الرف' : 'Start by scanning a shelf product';
   String get items => _ar ? 'العناصر' : 'Items';
@@ -177,6 +198,13 @@ class AppStrings {
       _ar ? 'تعذر فتح تطبيق الرسائل على هذا الجهاز' : 'Could not open the SMS app on this device';
   String get receiptOpenedInApp =>
       _ar ? 'افتح التطبيق وأكمل الإرسال' : 'Finish sending in the opened app';
+  String get buildingReceiptPdf =>
+      _ar ? 'جاري إنشاء ملف PDF…' : 'Building PDF…';
+  String get receiptPdfShareFailed =>
+      _ar ? 'تعذر مشاركة ملف PDF للإيصال' : 'Could not share the receipt PDF';
+  String get receiptPdfShared =>
+      _ar ? 'اختر واتساب أو تطبيقاً آخر لإرسال ملف PDF' : 'Pick WhatsApp or another app to send the PDF';
+  String get receiptPdfAmount => _ar ? 'المبلغ' : 'Amount';
   String get receiptSentOk => _ar ? 'تم إرسال تفاصيل الطلب' : 'Order details sent';
   String get receiptSentPartial =>
       _ar ? 'أُرسل جزئياً — راجع الرسالة' : 'Partially sent — see message';

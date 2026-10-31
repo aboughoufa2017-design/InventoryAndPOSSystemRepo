@@ -301,6 +301,88 @@ public sealed class SelfCheckoutService(
                 session.CurrencyCode));
     }
 
+    public async Task<AppResult<SelfCheckoutSessionResponse>> ReopenAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var session = await FindByAccessTokenAsync(accessToken, cancellationToken);
+        if (session is null)
+        {
+            return AppResult<SelfCheckoutSessionResponse>.Failure(ErrorCodes.ValidationFailed, "Session not found.");
+        }
+
+        try
+        {
+            session.EnsureUsable(DateTimeOffset.UtcNow);
+            session.ReopenForEditing(DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return AppResult<SelfCheckoutSessionResponse>.Failure(ErrorCodes.InvalidOperation, ex.Message);
+        }
+
+        return AppResult<SelfCheckoutSessionResponse>.Success(await MapAsync(session, cancellationToken));
+    }
+
+    public async Task<AppResult<IReadOnlyList<SelfCheckoutWaitingItemResponse>>> ListWaitingAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId is null)
+        {
+            return AppResult<IReadOnlyList<SelfCheckoutWaitingItemResponse>>.Failure(
+                ErrorCodes.Unauthorized,
+                "Not authenticated.");
+        }
+
+        if (warehouseId == Guid.Empty)
+        {
+            return AppResult<IReadOnlyList<SelfCheckoutWaitingItemResponse>>.Failure(
+                ErrorCodes.ValidationFailed,
+                "warehouseId is required.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var waitingStatuses = new[]
+        {
+            SelfCheckoutSessionStatus.Transferred,
+            SelfCheckoutSessionStatus.Auditing,
+            SelfCheckoutSessionStatus.ReadyForPayment,
+        };
+
+        var sessions = await db.SelfCheckoutSessions.AsNoTracking()
+            .Where(s => s.WarehouseId == warehouseId
+                        && waitingStatuses.Contains(s.Status)
+                        && s.ExpiresAtUtc > now)
+            .OrderBy(s => s.UpdatedAtUtc)
+            .Take(100)
+            .ToListAsync(cancellationToken);
+
+        var sessionIds = sessions.Select(s => s.Id).ToList();
+        var lineCounts = await db.SelfCheckoutLines.AsNoTracking()
+            .Where(l => sessionIds.Contains(l.SessionId))
+            .GroupBy(l => l.SessionId)
+            .Select(g => new { SessionId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SessionId, x => x.Count, cancellationToken);
+
+        IReadOnlyList<SelfCheckoutWaitingItemResponse> items = sessions
+            .Select(s => new SelfCheckoutWaitingItemResponse(
+                s.Id,
+                s.Code,
+                s.Status.ToString(),
+                s.GrandTotal,
+                s.CurrencyCode,
+                lineCounts.GetValueOrDefault(s.Id),
+                s.UpdatedAtUtc,
+                s.AuditRequired,
+                s.AuditCompleted))
+            .ToList();
+
+        return AppResult<IReadOnlyList<SelfCheckoutWaitingItemResponse>>.Success(items);
+    }
+
     public async Task<AppResult<SelfCheckoutSessionResponse>> ImportByCodeAsync(
         string codeOrQrPayload,
         CancellationToken cancellationToken)

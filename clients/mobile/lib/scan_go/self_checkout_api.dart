@@ -143,6 +143,42 @@ class SelfCheckoutTransfer {
   final String currencyCode;
 }
 
+class SelfCheckoutWaitingItem {
+  SelfCheckoutWaitingItem({
+    required this.sessionId,
+    required this.code,
+    required this.status,
+    required this.grandTotal,
+    required this.currencyCode,
+    required this.lineCount,
+    required this.updatedAtUtc,
+    required this.auditRequired,
+    required this.auditCompleted,
+  });
+
+  factory SelfCheckoutWaitingItem.fromJson(Map<String, dynamic> json) => SelfCheckoutWaitingItem(
+        sessionId: json['sessionId'] as String? ?? '',
+        code: json['code'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        grandTotal: (json['grandTotal'] as num?)?.toDouble() ?? 0,
+        currencyCode: json['currencyCode'] as String? ?? 'LYD',
+        lineCount: json['lineCount'] as int? ?? 0,
+        updatedAtUtc: json['updatedAtUtc'] as String? ?? '',
+        auditRequired: json['auditRequired'] as bool? ?? false,
+        auditCompleted: json['auditCompleted'] as bool? ?? false,
+      );
+
+  final String sessionId;
+  final String code;
+  final String status;
+  final double grandTotal;
+  final String currencyCode;
+  final int lineCount;
+  final String updatedAtUtc;
+  final bool auditRequired;
+  final bool auditCompleted;
+}
+
 /// Guest + cashier client for `/api/v1/pos/self-checkout`.
 class SelfCheckoutApi {
   SelfCheckoutApi({
@@ -225,6 +261,22 @@ class SelfCheckoutApi {
     return SelfCheckoutSession.fromJson(_decode(response));
   }
 
+  Future<SelfCheckoutSession> setLineQuantity({
+    required String accessToken,
+    required String lineId,
+    required double quantity,
+  }) async {
+    final response = await _http.put(
+      _uri('/api/v1/pos/self-checkout/sessions/current/lines/$lineId'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'accessToken': accessToken,
+        'quantity': quantity,
+      }),
+    );
+    return SelfCheckoutSession.fromJson(_decode(response));
+  }
+
   Future<SelfCheckoutTransfer> transfer(String accessToken) async {
     final response = await _http.post(
       _uri('/api/v1/pos/self-checkout/sessions/current/transfer'),
@@ -232,6 +284,31 @@ class SelfCheckoutApi {
       body: jsonEncode({'accessToken': accessToken}),
     );
     return SelfCheckoutTransfer.fromJson(_decode(response));
+  }
+
+  Future<SelfCheckoutSession> reopen(String accessToken) async {
+    final response = await _http.post(
+      _uri('/api/v1/pos/self-checkout/sessions/current/reopen'),
+      headers: await _headers(),
+      body: jsonEncode({'accessToken': accessToken}),
+    );
+    return SelfCheckoutSession.fromJson(_decode(response));
+  }
+
+  Future<List<SelfCheckoutWaitingItem>> listWaiting(String warehouseId) async {
+    final response = await _http.get(
+      _uri('/api/v1/pos/self-checkout/waiting', {'warehouseId': warehouseId}),
+      headers: await _headers(authRequired: true),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _decode(response); // throws
+    }
+    final body = jsonDecode(response.body);
+    if (body is! List) return const [];
+    return body
+        .whereType<Map>()
+        .map((e) => SelfCheckoutWaitingItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   Future<SelfCheckoutSession> importByCode(String codeOrQrPayload) async {

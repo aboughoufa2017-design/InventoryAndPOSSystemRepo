@@ -113,6 +113,26 @@ public sealed class SelfCheckoutSession : TenantOwnedEntity
         UpdatedAtUtc = utcNow;
     }
 
+    /// <summary>
+    /// Guest returns to shopping after showing the transfer QR (before cashier audit/payment).
+    /// </summary>
+    public void ReopenForEditing(DateTimeOffset utcNow)
+    {
+        if (Status is not SelfCheckoutSessionStatus.Transferred
+            and not SelfCheckoutSessionStatus.ReadyForPayment)
+        {
+            throw new InvalidOperationException(
+                $"Cannot reopen session for editing in status {Status}.");
+        }
+
+        Status = SelfCheckoutSessionStatus.Open;
+        AuditRequired = false;
+        AuditItemCount = 0;
+        AuditTargetBarcodesJson = null;
+        AuditCompleted = false;
+        UpdatedAtUtc = utcNow;
+    }
+
     public void StartAudit(DateTimeOffset utcNow)
     {
         if (Status is not SelfCheckoutSessionStatus.Transferred and not SelfCheckoutSessionStatus.Auditing)

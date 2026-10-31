@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/locale_controller.dart';
+import '../scan_go/pending_transfer_store.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import 'login_screen.dart';
 import 'scan_go_cart_screen.dart';
+import 'scan_go_transfer_screen.dart';
 
 /// Guest-only entry for Scan & Go. Staff login is a discreet secondary action.
 class ScanGoWelcomeScreen extends StatefulWidget {
@@ -17,8 +19,17 @@ class ScanGoWelcomeScreen extends StatefulWidget {
 
 class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
   final _tenantCtrl = TextEditingController();
+  final _pendingStore = PendingTransferStore();
   bool _busy = false;
+  bool _checkingPending = true;
+  PendingTransfer? _pending;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPending());
+  }
 
   @override
   void dispose() {
@@ -26,8 +37,107 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
     super.dispose();
   }
 
+  Future<void> _loadPending() async {
+    setState(() => _checkingPending = true);
+    var pending = await _pendingStore.load();
+    if (!mounted) return;
+    final api = context.read<SelfCheckoutApi>();
+    if (pending != null && pending.accessToken.isNotEmpty) {
+      try {
+        final session = await api.getCurrent(pending.accessToken);
+        if (PendingTransferStore.isTerminalStatus(session.status)) {
+          await _pendingStore.clear();
+          pending = null;
+        } else if (session.qrPayload.isNotEmpty) {
+          // Refresh totals/status from server while keeping the same handoff code.
+          pending = PendingTransfer(
+            transfer: SelfCheckoutTransfer(
+              sessionId: session.id,
+              code: session.code.isNotEmpty ? session.code : pending.transfer.code,
+              qrPayload:
+                  session.qrPayload.isNotEmpty ? session.qrPayload : pending.transfer.qrPayload,
+              auditRequired: session.auditRequired,
+              auditItemCount: session.auditItemCount,
+              status: session.status,
+              grandTotal: session.grandTotal,
+              currencyCode: session.currencyCode,
+            ),
+            accessToken: pending.accessToken,
+            expiresAtUtc: session.expiresAtUtc.isNotEmpty
+                ? session.expiresAtUtc
+                : pending.expiresAtUtc,
+            savedAt: pending.savedAt,
+          );
+          await _pendingStore.save(pending);
+        }
+      } catch (_) {
+        // Keep local pending if offline.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _pending = pending;
+      _checkingPending = false;
+    });
+  }
+
+  void _openPendingQr() {
+    final pending = _pending;
+    if (pending == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ScanGoTransferScreen(
+          transfer: pending.transfer,
+          accessToken: pending.accessToken,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _loadPending();
+    });
+  }
+
+  Future<void> _discardPending() async {
+    final s = context.read<LocaleController>().s;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(s.discardSavedQrConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.startNewShop)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await _pendingStore.clear();
+    if (!mounted) return;
+    setState(() => _pending = null);
+  }
+
   Future<void> _startGuest() async {
     final s = context.read<LocaleController>().s;
+    if (_pending != null) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          content: Text(s.discardSavedQrConfirm),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: Text(s.showSavedQr)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.startNewShop)),
+          ],
+        ),
+      );
+      if (ok == null) {
+        _openPendingQr();
+        return;
+      }
+      if (ok != true) return;
+      await _pendingStore.clear();
+      if (!mounted) return;
+      setState(() => _pending = null);
+    }
+
     final code = _tenantCtrl.text.trim();
     if (code.isEmpty) {
       setState(() => _error = s.needStoreCode);
@@ -102,7 +212,30 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 40),
+                if (_checkingPending) ...[
+                  const SizedBox(height: 24),
+                  const Center(child: CircularProgressIndicator()),
+                ] else if (_pending != null) ...[
+                  const SizedBox(height: 28),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _openPendingQr,
+                    icon: const Icon(Icons.qr_code_2),
+                    label: Text(s.showSavedQr),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_pending!.transfer.code} · ${_pending!.transfer.grandTotal.toStringAsFixed(2)} ${_pending!.transfer.currencyCode}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: ModernTechColors.muted),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _discardPending,
+                    child: Text(s.startNewShop),
+                  ),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  const SizedBox(height: 40),
+                ],
                 TextField(
                   controller: _tenantCtrl,
                   textCapitalization: TextCapitalization.characters,
@@ -124,7 +257,7 @@ class _ScanGoWelcomeScreenState extends State<ScanGoWelcomeScreen> {
                 ],
                 const SizedBox(height: 20),
                 FilledButton(
-                  onPressed: _busy ? null : _startGuest,
+                  onPressed: _busy || _checkingPending ? null : _startGuest,
                   child: _busy
                       ? const SizedBox(
                           height: 22,

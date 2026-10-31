@@ -46,6 +46,17 @@ public sealed record SelfCheckoutTransferResponse(
     decimal GrandTotal,
     string CurrencyCode);
 
+public sealed record SelfCheckoutWaitingItemResponse(
+    Guid SessionId,
+    string Code,
+    string Status,
+    decimal GrandTotal,
+    string CurrencyCode,
+    int LineCount,
+    DateTimeOffset UpdatedAtUtc,
+    bool AuditRequired,
+    bool AuditCompleted);
+
 public interface ISelfCheckoutService
 {
     Task<AppResult<SelfCheckoutSessionResponse>> StartAsync(
@@ -75,6 +86,14 @@ public interface ISelfCheckoutService
 
     Task<AppResult<SelfCheckoutTransferResponse>> TransferAsync(
         string accessToken,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<SelfCheckoutSessionResponse>> ReopenAsync(
+        string accessToken,
+        CancellationToken cancellationToken);
+
+    Task<AppResult<IReadOnlyList<SelfCheckoutWaitingItemResponse>>> ListWaitingAsync(
+        Guid warehouseId,
         CancellationToken cancellationToken);
 
     Task<AppResult<SelfCheckoutSessionResponse>> ImportByCodeAsync(

@@ -29,9 +29,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   final _lines = <_CartLine>[];
   String? _warehouseId;
   List<WarehouseItem> _warehouses = const [];
+  List<SelfCheckoutWaitingItem> _waiting = const [];
   String? _message;
   SelfCheckoutSession? _imported;
   bool _busy = false;
+  bool _loadingWaiting = false;
 
   @override
   void initState() {
@@ -54,9 +56,34 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         _warehouses = list;
         _warehouseId ??= list.isNotEmpty ? list.first.id : null;
       });
+      await _loadWaiting();
     } catch (e) {
       if (mounted) setState(() => _message = e.toString());
     }
+  }
+
+  Future<void> _loadWaiting() async {
+    final warehouseId = _warehouseId;
+    if (warehouseId == null || warehouseId.isEmpty) {
+      setState(() => _waiting = const []);
+      return;
+    }
+    setState(() => _loadingWaiting = true);
+    try {
+      final list = await context.read<SelfCheckoutApi>().listWaiting(warehouseId);
+      if (!mounted) return;
+      setState(() => _waiting = list);
+    } catch (_) {
+      if (mounted) setState(() => _waiting = const []);
+    } finally {
+      if (mounted) setState(() => _loadingWaiting = false);
+    }
+  }
+
+  Future<void> _importWaiting(SelfCheckoutWaitingItem item) async {
+    _orderCodeCtrl.text = item.code;
+    await _importOrder();
+    if (mounted) await _loadWaiting();
   }
 
   Future<void> _scanBarcode() async {
@@ -152,6 +179,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         _message =
             '${session.code} · ${session.grandTotal.toStringAsFixed(2)} ${session.currencyCode}';
       });
+      await _loadWaiting();
     } catch (e) {
       setState(() => _message = e.toString());
     } finally {
@@ -338,9 +366,52 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               items: _warehouses
                   .map((w) => DropdownMenuItem(value: w.id, child: Text(w.label)))
                   .toList(),
-              onChanged: (v) => setState(() => _warehouseId = v),
+              onChanged: (v) async {
+                setState(() => _warehouseId = v);
+                await _loadWaiting();
+              },
               decoration: InputDecoration(labelText: s.warehouse),
             ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(s.waitingCustomers, style: Theme.of(context).textTheme.titleSmall),
+              ),
+              IconButton(
+                tooltip: s.refreshWaiting,
+                onPressed: _loadingWaiting || _busy ? null : _loadWaiting,
+                icon: _loadingWaiting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          if (_waiting.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(s.emptyWaitingList),
+            )
+          else
+            ..._waiting.map(
+              (w) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(w.code, style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1)),
+                  subtitle: Text(
+                    '${w.lineCount} · ${w.status} · ${w.grandTotal.toStringAsFixed(2)} ${w.currencyCode}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _busy ? null : () => _importWaiting(w),
+                ),
+              ),
+            ),
+          const Divider(height: 24),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

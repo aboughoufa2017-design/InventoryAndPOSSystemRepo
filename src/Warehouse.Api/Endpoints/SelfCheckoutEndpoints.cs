@@ -21,6 +21,7 @@ public static class SelfCheckoutEndpoints
         guest.MapPut("/sessions/current/lines/{lineId:guid}", SetLineAsync).WithName("SelfCheckoutSetLine");
         guest.MapDelete("/sessions/current/lines/{lineId:guid}", RemoveLineAsync).WithName("SelfCheckoutRemoveLine");
         guest.MapPost("/sessions/current/transfer", TransferAsync).WithName("SelfCheckoutTransfer");
+        guest.MapPost("/sessions/current/reopen", ReopenAsync).WithName("SelfCheckoutReopen");
 
         // Cashier handoff + random audit (authenticated POS).
         var staff = endpoints.MapGroup("/api/v1/pos/self-checkout")
@@ -28,6 +29,9 @@ public static class SelfCheckoutEndpoints
             .RequireAuthorization()
             .RequireSales();
 
+        staff.MapGet("/waiting", ListWaitingAsync)
+            .RequirePermission("pos.sale")
+            .WithName("SelfCheckoutListWaiting");
         staff.MapPost("/import", ImportAsync)
             .RequirePermission("pos.sale")
             .WithName("SelfCheckoutImport");
@@ -99,6 +103,20 @@ public static class SelfCheckoutEndpoints
         HttpContext http,
         CancellationToken ct) =>
         ToHttp(await service.TransferAsync(request.AccessToken, ct), http);
+
+    private static async Task<IResult> ReopenAsync(
+        AccessTokenRequest request,
+        ISelfCheckoutService service,
+        HttpContext http,
+        CancellationToken ct) =>
+        ToHttp(await service.ReopenAsync(request.AccessToken, ct), http);
+
+    private static async Task<IResult> ListWaitingAsync(
+        Guid warehouseId,
+        ISelfCheckoutService service,
+        HttpContext http,
+        CancellationToken ct) =>
+        ToHttp(await service.ListWaitingAsync(warehouseId, ct), http);
 
     private static async Task<IResult> ImportAsync(
         ImportSelfCheckoutRequest request,

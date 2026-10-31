@@ -7,6 +7,8 @@ import '../connectivity/connectivity_controller.dart';
 import '../l10n/locale_controller.dart';
 import '../receipts/local_receipt_store.dart';
 import '../receipts/receipt_api.dart';
+import '../receipts/receipt_pdf.dart';
+import '../receipts/receipt_pdf_share.dart';
 import '../receipts/receipt_share_links.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/offline_banner.dart';
@@ -89,35 +91,51 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     return buf.toString();
   }
 
-  Future<void> _share() async {
-    if (_receipt == null) return;
-    await _persistContacts();
-    await Share.share(_shareBody());
+  ReceiptPdfLabels _pdfLabels() {
+    final locale = context.read<LocaleController>();
+    final s = locale.s;
+    return ReceiptPdfLabels(
+      brand: s.brand,
+      receipt: s.receipt,
+      orderCode: s.orderCodeLabel,
+      total: s.total,
+      item: s.product,
+      qty: s.quantity,
+      amount: s.receiptPdfAmount,
+      rtl: locale.isArabic,
+    );
   }
 
-  Future<void> _shareWhatsApp() async {
+  Future<void> _sharePdf() async {
+    if (_receipt == null) return;
     final s = context.read<LocaleController>().s;
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      setState(() => _status = s.needPhone);
-      return;
-    }
-    if (ReceiptShareLinks.normalizeWhatsAppDigits(phone) == null) {
-      setState(() => _status = s.invalidPhoneForShare);
-      return;
-    }
+    setState(() {
+      _sending = true;
+      _status = s.buildingReceiptPdf;
+    });
     try {
       await _persistContacts();
-      final ok = await ReceiptShareLinks.openWhatsApp(
-        phone: phone,
-        text: _shareBody(),
+      final result = await ReceiptPdfShare.share(
+        receipt: _receipt!,
+        labels: _pdfLabels(),
+        caption: _shareBody(),
       );
       if (!mounted) return;
-      setState(() => _status = ok ? s.receiptOpenedInApp : s.cannotOpenWhatsApp);
+      if (result.status == ShareResultStatus.dismissed) {
+        setState(() => _status = null);
+      } else {
+        setState(() => _status = s.receiptPdfShared);
+      }
     } catch (_) {
-      if (mounted) setState(() => _status = s.cannotOpenWhatsApp);
+      if (mounted) setState(() => _status = s.receiptPdfShareFailed);
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
+
+  Future<void> _share() async => _sharePdf();
+
+  Future<void> _shareWhatsApp() async => _sharePdf();
 
   Future<void> _shareDeviceSms() async {
     final s = context.read<LocaleController>().s;

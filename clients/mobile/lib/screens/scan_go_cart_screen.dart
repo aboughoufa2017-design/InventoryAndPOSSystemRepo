@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/locale_controller.dart';
+import '../scan_go/pending_transfer_store.dart';
 import '../scan_go/self_checkout_api.dart';
 import '../theme/modern_tech_theme.dart';
 import '../widgets/barcode_scanner_sheet.dart';
@@ -77,6 +78,23 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
     }
   }
 
+  Future<void> _setQty(SelfCheckoutLine line, double quantity) async {
+    setState(() => _busy = true);
+    try {
+      final api = context.read<SelfCheckoutApi>();
+      final next = await api.setLineQuantity(
+        accessToken: _session.accessToken,
+        lineId: line.id,
+        quantity: quantity,
+      );
+      setState(() => _session = next);
+    } catch (e) {
+      setState(() => _message = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _finish() async {
     if (_session.lines.isEmpty) {
       setState(() => _message = context.read<LocaleController>().s.emptyCart);
@@ -89,10 +107,18 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
     try {
       final api = context.read<SelfCheckoutApi>();
       final transfer = await api.transfer(_session.accessToken);
+      await PendingTransferStore().saveFromTransfer(
+        transfer: transfer,
+        accessToken: _session.accessToken,
+        expiresAtUtc: _session.expiresAtUtc,
+      );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => ScanGoTransferScreen(transfer: transfer),
+          builder: (_) => ScanGoTransferScreen(
+            transfer: transfer,
+            accessToken: _session.accessToken,
+          ),
         ),
       );
     } catch (e) {
@@ -176,11 +202,37 @@ class _ScanGoCartScreenState extends State<ScanGoCartScreen> {
                       child: ListTile(
                         title: Text(l.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
-                          '${l.quantity} × ${l.unitPrice.toStringAsFixed(2)} ${l.sku}',
+                          '${l.unitPrice.toStringAsFixed(2)} · ${l.sku}',
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: _busy ? null : () => _remove(l),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: s.decreaseQty,
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: _busy
+                                  ? null
+                                  : () {
+                                      final next = l.quantity - 1;
+                                      if (next <= 0) {
+                                        _remove(l);
+                                      } else {
+                                        _setQty(l, next);
+                                      }
+                                    },
+                            ),
+                            Text(
+                              l.quantity == l.quantity.roundToDouble()
+                                  ? l.quantity.toStringAsFixed(0)
+                                  : l.quantity.toStringAsFixed(3),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            IconButton(
+                              tooltip: s.increaseQty,
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: _busy ? null : () => _setQty(l, l.quantity + 1),
+                            ),
+                          ],
                         ),
                       ),
                     ),
