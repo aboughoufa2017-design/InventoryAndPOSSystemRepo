@@ -71,8 +71,26 @@ Staff receipt screen calls:
 
 `POST /send` uses independent per-channel timeouts (email ~15s, SMS ~25s) so a hung SMTP connect does not cancel SMS. Partial success returns `{ emailSent, smsSent, emailError, smsError }`.
 
-SMS uses `RESALA_RECEIPT_SMS_TEMPLATE_ID` with a **single** placeholder `$1` = compact invoice text
-(order code/id, total, line summary). Example template body: `اهلا بك هده تفاصيل الفاتوة $1`.
+SMS uses `RESALA_RECEIPT_SMS_TEMPLATE_ID` with four placeholders:
+
+| Placeholder | Content |
+| --- | --- |
+| `$1` | Order code (or order id) |
+| `$2` | Grand total + currency |
+| `$3` | Line items `name×qty=total` (truncated if long) |
+| `$4` | Order time UTC |
+
+Paste this body in the Resala dashboard (then approve if required):
+
+```
+اهلا بك، تفاصيل الفاتورة:
+الطلب: $1
+المبلغ: $2
+الأصناف: $3
+الوقت: $4
+```
+
+SMS length is limited — very long carts may show `|+N` for remaining lines. Full receipt remains on email / Share.
 
 Email uses SMTP (`SmtpSettings` / `SMTP_*`) via MailKit (`SmtpClient.Timeout` ~12s).
 

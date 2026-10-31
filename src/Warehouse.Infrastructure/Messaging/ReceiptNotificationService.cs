@@ -48,12 +48,16 @@ public sealed class ReceiptNotificationService(
         }
 
         var culture = CultureInfo.InvariantCulture;
-        // Resala receipt template uses a single placeholder, e.g.:
-        // "اهلا بك هده تفاصيل الفاتوة $1"
+        // Must match the approved Resala template placeholders $1..$4.
         var record = new Dictionary<string, object?>
         {
             ["phone"] = normalized,
-            ["$1"] = BuildReceiptPlaceholder(details, culture),
+            ["$1"] = !string.IsNullOrWhiteSpace(details.OrderCode)
+                ? details.OrderCode!
+                : details.OrderId,
+            ["$2"] = $"{details.GrandTotal.ToString("0.00", culture)} {details.CurrencyCode}",
+            ["$3"] = BuildLinesPlaceholder(details, culture),
+            ["$4"] = details.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm", culture) + " UTC",
         };
 
         try
@@ -94,37 +98,52 @@ public sealed class ReceiptNotificationService(
         }
     }
 
-    /// <summary>Compact invoice text for the template's single <c>$1</c> placeholder.</summary>
-    private static string BuildReceiptPlaceholder(OrderReceiptDetails details, CultureInfo culture)
+    /// <summary>Line items for template <c>$3</c> (name×qty=lineTotal), truncated for SMS length.</summary>
+    private static string BuildLinesPlaceholder(OrderReceiptDetails details, CultureInfo culture)
     {
-        var sb = new StringBuilder();
-        var label = !string.IsNullOrWhiteSpace(details.OrderCode)
-            ? details.OrderCode
-            : details.OrderId;
-        sb.Append('#').Append(label)
-            .Append(' ')
-            .Append(details.GrandTotal.ToString("0.00", culture))
-            .Append(' ')
-            .Append(details.CurrencyCode);
+        if (details.Lines.Count == 0)
+        {
+            return "-";
+        }
 
-        var count = 0;
+        var sb = new StringBuilder();
+        var written = 0;
         foreach (var line in details.Lines)
         {
-            if (count >= 5)
+            var lineTotal = (line.Quantity * line.UnitPrice).ToString("0.00", culture);
+            var name = line.Name.Length <= 40 ? line.Name : line.Name[..37] + "…";
+            var piece = $"{name}×{line.Quantity.ToString("0.###", culture)}={lineTotal}";
+
+            var separatorLen = written > 0 ? 3 : 0;
+            // Arabic SMS is UCS-2 (~70 chars/segment); keep $3 bounded.
+            if (sb.Length + separatorLen + piece.Length > 280)
             {
-                sb.Append(" …");
+                var remaining = details.Lines.Count - written;
+                if (remaining > 0)
+                {
+                    var suffix = $" | +{remaining}";
+                    if (sb.Length + suffix.Length <= 300)
+                    {
+                        sb.Append(suffix);
+                    }
+                    else
+                    {
+                        sb.Append('…');
+                    }
+                }
+
                 break;
             }
 
-            sb.Append(" | ")
-                .Append(line.Name)
-                .Append('×')
-                .Append(line.Quantity.ToString("0.###", culture));
-            count++;
+            if (written > 0)
+            {
+                sb.Append(" | ");
+            }
+
+            sb.Append(piece);
+            written++;
         }
 
-        var text = sb.ToString();
-        // Keep well under a single SMS segment budget for the variable part.
-        return text.Length <= 320 ? text : text[..317] + "…";
+        return sb.Length == 0 ? "-" : sb.ToString();
     }
 }

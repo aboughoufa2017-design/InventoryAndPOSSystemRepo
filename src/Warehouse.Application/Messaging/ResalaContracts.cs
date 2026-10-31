@@ -18,7 +18,7 @@ public sealed class ResalaOptions
 
     /// <summary>
     /// Approved Resala SMS template id for order receipts.
-    /// Single placeholder <c>$1</c> = compact invoice text (id/code, total, lines).
+    /// Placeholders: <c>$1</c> order, <c>$2</c> total, <c>$3</c> lines, <c>$4</c> time (UTC).
     /// </summary>
     public string? ReceiptSmsTemplateId { get; set; }
 }
