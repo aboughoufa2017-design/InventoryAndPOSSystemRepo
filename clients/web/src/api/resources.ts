@@ -316,6 +316,66 @@ export const updateSalePayment = (id: string, paidAmount: number, expectedRowVer
     body: JSON.stringify({ paidAmount, expectedRowVersion }),
   });
 
+export type PosSaleLine = {
+  id: string;
+  productId: string;
+  skuSnapshot: string;
+  nameSnapshot: string;
+  quantity: number;
+  unitPrice: number;
+  discountAmount: number;
+  taxAmount: number;
+  lineTotal: number;
+};
+
+export type PosPayment = {
+  id: string;
+  method: string;
+  amount: number;
+  status: string;
+  reference?: string | null;
+};
+
+export type PosSale = {
+  id: string;
+  warehouseId: string;
+  locationId: string;
+  deviceId?: string | null;
+  customerId?: string | null;
+  cashShiftId?: string | null;
+  clientCommandId: string;
+  receiptNumber: string;
+  status: string;
+  currencyCode: string;
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  soldAtUtc: string;
+  notes?: string | null;
+  rowVersion: number;
+  wasIdempotentReplay: boolean;
+  lines: PosSaleLine[];
+  payments: PosPayment[];
+};
+
+export type ListPosSalesParams = {
+  warehouseId?: string;
+  fromUtc?: string;
+  toUtc?: string;
+};
+
+export const listPosSales = (params: ListPosSalesParams = {}) => {
+  const qs = new URLSearchParams();
+  if (params.warehouseId) qs.set("warehouseId", params.warehouseId);
+  if (params.fromUtc) qs.set("fromUtc", params.fromUtc);
+  if (params.toUtc) qs.set("toUtc", params.toUtc);
+  const query = qs.toString();
+  return apiFetch<PosSale[]>(`/api/v1/pos/sales${query ? `?${query}` : ""}`);
+};
+
+export const getPosSale = (id: string) => apiFetch<PosSale>(`/api/v1/pos/sales/${id}`);
+
 export const listTransfers = () => apiFetch<Transfer[]>("/api/v1/transfers");
 export const createTransfer = (body: {
   sourceWarehouseId: string;
