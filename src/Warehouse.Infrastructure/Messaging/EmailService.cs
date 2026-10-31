@@ -55,20 +55,48 @@ public sealed class EmailService(
         email.Body = builder.ToMessageBody();
 
         using var smtp = new SmtpClient();
+        // Cap connect/auth/send so a blocked outbound SMTP port does not hang the request indefinitely.
+        smtp.Timeout = 12_000;
         var socketOptions = _settings.EnableSsl
             ? SecureSocketOptions.StartTls
             : SecureSocketOptions.None;
 
-        await smtp.ConnectAsync(_settings.Server, _settings.Port, socketOptions, cancellationToken)
-            .ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(_settings.Username))
+        try
         {
-            await smtp.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken)
+            await smtp.ConnectAsync(_settings.Server, _settings.Port, socketOptions, cancellationToken)
                 .ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(_settings.Username))
+            {
+                await smtp.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            await smtp.SendAsync(email, cancellationToken).ConfigureAwait(false);
+            await smtp.DisconnectAsync(true, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"SMTP timed out connecting/sending via {_settings.Server}:{_settings.Port}. " +
+                "Host outbound SMTP may be blocked (common on Render). Prefer smtp.gmail.com:587 with an app password.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (TimeoutException)
+        {
+            throw new TimeoutException(
+                $"SMTP timed out connecting/sending via {_settings.Server}:{_settings.Port}. " +
+                "Host outbound SMTP may be blocked (common on Render). Prefer smtp.gmail.com:587 with an app password.");
+        }
+        catch (Exception ex) when (ex is IOException or SmtpCommandException or SmtpProtocolException)
+        {
+            throw new InvalidOperationException(
+                $"SMTP unreachable or rejected at {_settings.Server}:{_settings.Port}: {ex.Message}",
+                ex);
         }
 
-        await smtp.SendAsync(email, cancellationToken).ConfigureAwait(false);
-        await smtp.DisconnectAsync(true, cancellationToken).ConfigureAwait(false);
         logger.LogInformation("SMTP email sent to {To} subject {Subject}", message.To, message.Subject);
     }
 

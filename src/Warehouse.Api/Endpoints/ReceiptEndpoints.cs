@@ -105,6 +105,10 @@ public static class ReceiptEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger("ReceiptEndpoints");
+        // Request CT is intentionally unused: email/SMS use independent timeouts so one channel
+        // cannot cancel the other when SMTP hangs past the HTTP client/proxy limit.
+        _ = cancellationToken;
+
         var emailRequested = !string.IsNullOrWhiteSpace(request.CustomerEmail);
         var smsRequested = !string.IsNullOrWhiteSpace(request.CustomerPhone);
         if (!emailRequested && !smsRequested)
@@ -118,37 +122,32 @@ public static class ReceiptEndpoints
         var emailSent = false;
         var smsSent = false;
 
+        // Independent per-channel timeouts so a hung SMTP connect does not cancel SMS (and vice versa).
+        // Do not link to the HTTP request token — sibling channels must not share cancellation.
+        Task? emailTask = null;
+        Task? smsTask = null;
+
         if (emailRequested)
         {
-            try
-            {
-                await notifications.SendEmailAsync(request.CustomerEmail!, details, cancellationToken);
-                emailSent = true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Receipt email failed for order {OrderId}", request.OrderId);
-                emailError = ex.Message;
-            }
+            emailTask = SendEmailChannelAsync();
         }
 
         if (smsRequested)
         {
-            try
-            {
-                await notifications.SendSmsAsync(request.CustomerPhone!, details, cancellationToken);
-                smsSent = true;
-            }
-            catch (ResalaApiException ex)
-            {
-                logger.LogWarning(ex, "Receipt SMS Resala type={Type} order={OrderId}", ex.Type, request.OrderId);
-                smsError = $"{ex.Type}: {ex.Message}";
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Receipt SMS failed for order {OrderId}", request.OrderId);
-                smsError = ex.Message;
-            }
+            smsTask = SendSmsChannelAsync();
+        }
+
+        if (emailTask is not null && smsTask is not null)
+        {
+            await Task.WhenAll(emailTask, smsTask);
+        }
+        else if (emailTask is not null)
+        {
+            await emailTask;
+        }
+        else if (smsTask is not null)
+        {
+            await smsTask;
         }
 
         if (!emailSent && !smsSent)
@@ -163,6 +162,51 @@ public static class ReceiptEndpoints
             emailError,
             smsError,
         });
+
+        async Task SendEmailChannelAsync()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            try
+            {
+                await notifications.SendEmailAsync(request.CustomerEmail!, details, cts.Token);
+                emailSent = true;
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Receipt email timed out for order {OrderId}", request.OrderId);
+                emailError = "SMTP connect/send timed out. Check SMTP_* settings or host outbound SMTP (Render often blocks SMTP).";
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Receipt email failed for order {OrderId}", request.OrderId);
+                emailError = ex.Message;
+            }
+        }
+
+        async Task SendSmsChannelAsync()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+            try
+            {
+                await notifications.SendSmsAsync(request.CustomerPhone!, details, cts.Token);
+                smsSent = true;
+            }
+            catch (ResalaApiException ex)
+            {
+                logger.LogWarning(ex, "Receipt SMS Resala type={Type} order={OrderId}", ex.Type, request.OrderId);
+                smsError = $"{ex.Type}: {ex.Message}";
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Receipt SMS timed out for order {OrderId}", request.OrderId);
+                smsError = "SMS send timed out waiting for Resala.";
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Receipt SMS failed for order {OrderId}", request.OrderId);
+                smsError = ex.Message;
+            }
+        }
     }
 
     private static OrderReceiptDetails ToDetails(SendReceiptRequest request)

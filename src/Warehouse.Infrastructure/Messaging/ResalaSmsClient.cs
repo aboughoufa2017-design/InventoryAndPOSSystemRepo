@@ -103,43 +103,59 @@ public sealed class ResalaSmsClient : IResalaSmsClient
         }
 
         // Single attempt only — do not retry (message may already have been accepted).
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        var status = (int)response.StatusCode;
-        var raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-        if (response.IsSuccessStatusCode)
+        HttpResponseMessage response;
+        try
         {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                throw new ResalaApiException(status, "EmptyBody", "Resala returned an empty success body.");
-            }
-
-            try
-            {
-                var parsed = JsonSerializer.Deserialize<T>(raw, JsonOptions);
-                if (parsed is null)
-                {
-                    throw new ResalaApiException(status, "EmptyBody", "Resala returned an unreadable success body.");
-                }
-
-                return parsed;
-            }
-            catch (JsonException ex)
-            {
-                throw new ResalaApiException(
-                    status,
-                    "ParseError",
-                    $"Resala success body could not be parsed: {ex.Message}");
-            }
+            response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient surfaces timeouts as TaskCanceledException (subclass of OperationCanceledException).
+            throw new ResalaApiException(
+                408,
+                "Timeout",
+                "Resala request timed out (HTTP client timeout).");
         }
 
-        var apiError = TryParseError(raw);
-        var type = !string.IsNullOrWhiteSpace(apiError?.Type)
-            ? apiError!.Type!
-            : MapStatusToType(status);
-        var message = apiError?.Message ?? $"Resala request failed ({status}).";
+        using (response)
+        {
+            var status = (int)response.StatusCode;
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-        throw new ResalaApiException(status, type, message, apiError?.Errors);
+            if (response.IsSuccessStatusCode)
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    throw new ResalaApiException(status, "EmptyBody", "Resala returned an empty success body.");
+                }
+
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<T>(raw, JsonOptions);
+                    if (parsed is null)
+                    {
+                        throw new ResalaApiException(status, "EmptyBody", "Resala returned an unreadable success body.");
+                    }
+
+                    return parsed;
+                }
+                catch (JsonException ex)
+                {
+                    throw new ResalaApiException(
+                        status,
+                        "ParseError",
+                        $"Resala success body could not be parsed: {ex.Message}");
+                }
+            }
+
+            var apiError = TryParseError(raw);
+            var type = !string.IsNullOrWhiteSpace(apiError?.Type)
+                ? apiError!.Type!
+                : MapStatusToType(status);
+            var message = apiError?.Message ?? $"Resala request failed ({status}).";
+
+            throw new ResalaApiException(status, type, message, apiError?.Errors);
+        }
     }
 
     private static string MapStatusToType(int status) => status switch
